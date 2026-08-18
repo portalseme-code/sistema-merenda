@@ -1,10 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { COLORS, FONT_DISPLAY, FONT_BODY } from '../theme.js';
 import { Field, inputStyle, Btn, SenhaInput } from './ui.jsx';
 import { registrarHistorico, notificar } from '../utils.js';
 import logoSigae from '../assets/logo-sigae.png';
 
+/**
+ * Detecta tela pequena via JavaScript (não depende de media query no CSS,
+ * que em alguns navegadores/situações pode não ser aplicada corretamente).
+ */
+function useTelaPequena(limite = 700) {
+  const [pequena, setPequena] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= limite : false
+  );
+  useEffect(() => {
+    function medir() {
+      setPequena(window.innerWidth <= limite);
+    }
+    medir();
+    window.addEventListener('resize', medir);
+    window.addEventListener('orientationchange', medir);
+    return () => {
+      window.removeEventListener('resize', medir);
+      window.removeEventListener('orientationchange', medir);
+    };
+  }, [limite]);
+  return pequena;
+}
+
 export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
+  const telaPequena = useTelaPequena(700);
+
   const [login, setLogin] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
@@ -72,6 +97,146 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
     setCargoSolicitante("Nutricionista");
   }
 
+  const conteudoFormulario = (
+    <>
+      {!telaPequena && (
+        <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.primary, letterSpacing: 1.2, textTransform: "uppercase" }}>
+          Secretaria Municipal de Educação
+        </div>
+      )}
+      <h1 style={{ fontSize: telaPequena ? 21 : 25, margin: telaPequena ? "0 0 14px" : "6px 0 18px", color: COLORS.ink, fontFamily: FONT_DISPLAY, fontWeight: 600 }}>
+        Sistema de Refeições Escolares
+      </h1>
+
+      {carregando && (
+        <div style={{ fontSize: 12.5, color: COLORS.inkSoft, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
+          ⏳ Conectando à base de dados...
+        </div>
+      )}
+      {!carregando && erroConexao && (
+        <div style={{ fontSize: 12.5, color: COLORS.warn, marginBottom: 16, background: COLORS.warnSoft, padding: "8px 12px", borderRadius: 8 }}>
+          ⚠ Não foi possível conectar ao servidor agora. Você pode continuar navegando, mas os dados não serão salvos até a conexão voltar.
+        </div>
+      )}
+      {!carregando && !erroConexao && (
+        <div style={{ fontSize: 12.5, color: COLORS.good, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
+          ✓ Conectado à base de dados
+        </div>
+      )}
+
+      {tela === "login" && (
+        <>
+          <Field label="Usuário">
+            <input style={inputStyle} value={login} onChange={(e) => { setLogin(e.target.value); setErro(""); }} placeholder="NOME.SOBRENOME" onKeyDown={(e) => e.key === "Enter" && entrar()} />
+          </Field>
+          <Field label="Senha">
+            <SenhaInput style={inputStyle} value={senha} onChange={(e) => { setSenha(e.target.value); setErro(""); }} onKeyDown={(e) => e.key === "Enter" && entrar()} />
+          </Field>
+
+          {erro && <div style={{ color: COLORS.warn, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{erro}</div>}
+
+          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <Btn onClick={entrar}>Entrar</Btn>
+            <button onClick={() => setTela("recuperar")} style={{ background: "none", border: "none", color: COLORS.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 0 }}>
+              Esqueci minha senha
+            </button>
+          </div>
+
+          <div style={{ marginTop: 22, paddingTop: 18, borderTop: `1px solid ${COLORS.line}` }}>
+            <div style={{ fontSize: 13, color: COLORS.inkSoft, marginBottom: 8 }}>Ainda não tem acesso?</div>
+            <Btn variant="secondary" onClick={() => setTela("solicitar")}>Solicitar cadastro</Btn>
+          </div>
+        </>
+      )}
+
+      {tela === "recuperar" && (
+        <>
+          <Field label="E-mail cadastrado" hint="Enviaremos instruções de redefinição de senha para este e-mail.">
+            <input type="email" style={inputStyle} value={emailRecuperacao} onChange={(e) => setEmailRecuperacao(e.target.value)} placeholder="seu.email@seme.gov.br" />
+          </Field>
+          <div style={{ display: "flex", gap: 12 }}>
+            <Btn onClick={solicitarRecuperacao}>Enviar instruções</Btn>
+            <Btn variant="ghost" onClick={() => setTela("login")}>Voltar</Btn>
+          </div>
+        </>
+      )}
+
+      {tela === "solicitar" && !solicitacaoEnviada && (
+        <>
+          <div style={{ fontSize: 13, color: COLORS.inkSoft, marginBottom: 14 }}>
+            Preencha os dados abaixo. O Administrador Geral vai analisar sua solicitação e enviar o login e a senha por e-mail.
+          </div>
+          <Field label="Nome completo">
+            <input style={inputStyle} value={nomeSolicitante} onChange={(e) => setNomeSolicitante(e.target.value.toUpperCase())} />
+          </Field>
+          <Field label="Escola em que trabalha">
+            <input style={inputStyle} value={escolaSolicitante} onChange={(e) => setEscolaSolicitante(e.target.value.toUpperCase())} placeholder="Ex: EMEIEF Amarilis Fernandes Garcia" />
+          </Field>
+          <Field label="E-mail">
+            <input type="email" style={inputStyle} value={emailSolicitante} onChange={(e) => setEmailSolicitante(e.target.value)} />
+          </Field>
+          <Field label="Telefone">
+            <input style={inputStyle} value={telefoneSolicitante} onChange={(e) => setTelefoneSolicitante(e.target.value)} placeholder="(27) 90000-0000" />
+          </Field>
+          <Field label="Cargo">
+            <select style={inputStyle} value={cargoSolicitante} onChange={(e) => setCargoSolicitante(e.target.value)}>
+              <option value="Nutricionista">Nutricionista</option>
+              <option value="Escola">Escola</option>
+            </select>
+          </Field>
+          <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+            <Btn onClick={enviarSolicitacao}>Enviar solicitação</Btn>
+            <Btn variant="ghost" onClick={() => setTela("login")}>Voltar</Btn>
+          </div>
+        </>
+      )}
+
+      {tela === "solicitar" && solicitacaoEnviada && (
+        <div style={{ background: COLORS.goodSoft, border: `1px solid ${COLORS.good}`, borderRadius: 10, padding: 16 }}>
+          <div style={{ fontWeight: 800, color: COLORS.good, marginBottom: 6 }}>✓ Solicitação enviada</div>
+          <div style={{ fontSize: 13.5, color: COLORS.ink, marginBottom: 14 }}>
+            Assim que for aprovada, você vai receber o login e a senha por e-mail.
+          </div>
+          <Btn variant="secondary" onClick={reiniciarSolicitacao}>Voltar para o login</Btn>
+        </div>
+      )}
+    </>
+  );
+
+  // ---------- LAYOUT MOBILE (tela pequena) ----------
+  // Uma única coluna, sem cartão largo, sem ilustração lateral —
+  // só o essencial, ocupando a largura real do celular.
+  if (telaPequena) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          width: "100%",
+          background: `linear-gradient(160deg, ${COLORS.primaryDark}, ${COLORS.primary})`,
+          fontFamily: FONT_BODY,
+          boxSizing: "border-box",
+          overflowX: "hidden",
+        }}
+      >
+        <div style={{ padding: "28px 20px 16px", textAlign: "center" }}>
+          <img src={logoSigae} alt="SIGAE" style={{ maxWidth: "88%", width: 180, height: "auto" }} />
+        </div>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: "22px 22px 0 0",
+            padding: "24px 18px 40px",
+            minHeight: "60vh",
+            boxSizing: "border-box",
+          }}
+        >
+          {conteudoFormulario}
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- LAYOUT DESKTOP / TABLET ----------
   return (
     <div
       style={{
@@ -96,7 +261,6 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
         }}
       >
         <div
-          className="login-illustration"
           style={{
             flex: "0 0 44%",
             background: `linear-gradient(165deg, ${COLORS.primary}, ${COLORS.primaryDark})`,
@@ -111,7 +275,7 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
           }}
         >
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <img src={logoSigae} alt="SIGAE" style={{ width: 220, height: "auto", filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.25))" }} />
+            <img src={logoSigae} alt="SIGAE" style={{ width: 220, maxWidth: "100%", height: "auto", filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.25))" }} />
           </div>
           <div
             style={{
@@ -137,106 +301,8 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
           </div>
         </div>
 
-        <div className="login-panel" style={{ flex: "1 1 56%", padding: "40px 36px", maxHeight: "92vh", overflowY: "auto" }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.primary, letterSpacing: 1.2, textTransform: "uppercase" }}>
-            Secretaria Municipal de Educação
-          </div>
-          <h1 style={{ fontSize: 25, margin: "6px 0 18px", color: COLORS.ink, fontFamily: FONT_DISPLAY, fontWeight: 600 }}>
-            Sistema de Refeições Escolares
-          </h1>
-
-          {carregando && (
-            <div style={{ fontSize: 12.5, color: COLORS.inkSoft, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              ⏳ Conectando à base de dados...
-            </div>
-          )}
-          {!carregando && erroConexao && (
-            <div style={{ fontSize: 12.5, color: COLORS.warn, marginBottom: 16, background: COLORS.warnSoft, padding: "8px 12px", borderRadius: 8 }}>
-              ⚠ Não foi possível conectar ao servidor agora. Você pode continuar navegando, mas os dados não serão salvos até a conexão voltar.
-            </div>
-          )}
-          {!carregando && !erroConexao && (
-            <div style={{ fontSize: 12.5, color: COLORS.good, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              ✓ Conectado à base de dados
-            </div>
-          )}
-
-          {tela === "login" && (
-            <>
-              <Field label="Usuário">
-                <input style={inputStyle} value={login} onChange={(e) => { setLogin(e.target.value); setErro(""); }} placeholder="NOME.SOBRENOME" onKeyDown={(e) => e.key === "Enter" && entrar()} />
-              </Field>
-              <Field label="Senha">
-                <SenhaInput style={inputStyle} value={senha} onChange={(e) => { setSenha(e.target.value); setErro(""); }} onKeyDown={(e) => e.key === "Enter" && entrar()} />
-              </Field>
-
-              {erro && <div style={{ color: COLORS.warn, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{erro}</div>}
-
-              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                <Btn onClick={entrar}>Entrar</Btn>
-                <button onClick={() => setTela("recuperar")} style={{ background: "none", border: "none", color: COLORS.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 0 }}>
-                  Esqueci minha senha
-                </button>
-              </div>
-
-              <div style={{ marginTop: 22, paddingTop: 18, borderTop: `1px solid ${COLORS.line}` }}>
-                <div style={{ fontSize: 13, color: COLORS.inkSoft, marginBottom: 8 }}>Ainda não tem acesso?</div>
-                <Btn variant="secondary" onClick={() => setTela("solicitar")}>Solicitar cadastro</Btn>
-              </div>
-            </>
-          )}
-
-          {tela === "recuperar" && (
-            <>
-              <Field label="E-mail cadastrado" hint="Enviaremos instruções de redefinição de senha para este e-mail.">
-                <input type="email" style={inputStyle} value={emailRecuperacao} onChange={(e) => setEmailRecuperacao(e.target.value)} placeholder="seu.email@seme.gov.br" />
-              </Field>
-              <div style={{ display: "flex", gap: 12 }}>
-                <Btn onClick={solicitarRecuperacao}>Enviar instruções</Btn>
-                <Btn variant="ghost" onClick={() => setTela("login")}>Voltar</Btn>
-              </div>
-            </>
-          )}
-
-          {tela === "solicitar" && !solicitacaoEnviada && (
-            <>
-              <div style={{ fontSize: 13, color: COLORS.inkSoft, marginBottom: 14 }}>
-                Preencha os dados abaixo. O Administrador Geral vai analisar sua solicitação e enviar o login e a senha por e-mail.
-              </div>
-              <Field label="Nome completo">
-                <input style={inputStyle} value={nomeSolicitante} onChange={(e) => setNomeSolicitante(e.target.value.toUpperCase())} />
-              </Field>
-              <Field label="Escola em que trabalha">
-                <input style={inputStyle} value={escolaSolicitante} onChange={(e) => setEscolaSolicitante(e.target.value.toUpperCase())} placeholder="Ex: EMEIEF Amarilis Fernandes Garcia" />
-              </Field>
-              <Field label="E-mail">
-                <input type="email" style={inputStyle} value={emailSolicitante} onChange={(e) => setEmailSolicitante(e.target.value)} />
-              </Field>
-              <Field label="Telefone">
-                <input style={inputStyle} value={telefoneSolicitante} onChange={(e) => setTelefoneSolicitante(e.target.value)} placeholder="(27) 90000-0000" />
-              </Field>
-              <Field label="Cargo">
-                <select style={inputStyle} value={cargoSolicitante} onChange={(e) => setCargoSolicitante(e.target.value)}>
-                  <option value="Nutricionista">Nutricionista</option>
-                  <option value="Escola">Escola</option>
-                </select>
-              </Field>
-              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-                <Btn onClick={enviarSolicitacao}>Enviar solicitação</Btn>
-                <Btn variant="ghost" onClick={() => setTela("login")}>Voltar</Btn>
-              </div>
-            </>
-          )}
-
-          {tela === "solicitar" && solicitacaoEnviada && (
-            <div style={{ background: COLORS.goodSoft, border: `1px solid ${COLORS.good}`, borderRadius: 10, padding: 16 }}>
-              <div style={{ fontWeight: 800, color: COLORS.good, marginBottom: 6 }}>✓ Solicitação enviada</div>
-              <div style={{ fontSize: 13.5, color: COLORS.ink, marginBottom: 14 }}>
-                Assim que for aprovada, você vai receber o login e a senha por e-mail.
-              </div>
-              <Btn variant="secondary" onClick={reiniciarSolicitacao}>Voltar para o login</Btn>
-            </div>
-          )}
+        <div style={{ flex: "1 1 56%", padding: "40px 36px", maxHeight: "92vh", overflowY: "auto" }}>
+          {conteudoFormulario}
         </div>
       </div>
     </div>

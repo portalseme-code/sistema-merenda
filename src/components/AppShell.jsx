@@ -1,8 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { COLORS, FONT_DISPLAY } from '../theme.js';
 import { fmtDataHora } from '../utils.js';
 import { BellIcon, HamburgerIcon, UserIcon, ChevronIcon, Btn } from './ui.jsx';
 import logoSigae from '../assets/logo-sigae.png';
+
+/**
+ * Detecta tela pequena via JavaScript, sem depender de media query no CSS
+ * (que em alguns navegadores pode não ser aplicada corretamente).
+ */
+function useTelaPequena(limite) {
+  const [pequena, setPequena] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= limite : false
+  );
+  useEffect(() => {
+    function medir() {
+      setPequena(window.innerWidth <= limite);
+    }
+    medir();
+    window.addEventListener('resize', medir);
+    window.addEventListener('orientationchange', medir);
+    return () => {
+      window.removeEventListener('resize', medir);
+      window.removeEventListener('orientationchange', medir);
+    };
+  }, [limite]);
+  return pequena;
+}
 
 export const NAV_NUTRICIONISTA = [
   { key: "dashboard", label: "Painel", icon: "🥗" },
@@ -95,6 +118,7 @@ export function AppStyles() {
 }
 export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSidebar }) {
   const [abrirNotif, setAbrirNotif] = useState(false);
+  const mobile = useTelaPequena(560);
   const escolaLogada = escola ? escola.id : null;
 
   const minhasNotificacoes = db.notificacoes
@@ -121,7 +145,9 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
             <HamburgerIcon />
           </button>
           <img src={logoSigae} alt="SIGAE" style={{ height: 30, width: "auto", display: "block", flexShrink: 0 }} />
-          <div className="header-title-text" style={{ fontWeight: 700, fontSize: 15.5, letterSpacing: 0.2, fontFamily: FONT_DISPLAY, whiteSpace: "nowrap" }}>Alimentação Escolar · SEME</div>
+          {!mobile && (
+            <div style={{ fontWeight: 700, fontSize: 15.5, letterSpacing: 0.2, fontFamily: FONT_DISPLAY, whiteSpace: "nowrap" }}>Alimentação Escolar · SEME</div>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ position: "relative" }}>
@@ -149,10 +175,12 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
               </div>
             )}
           </div>
-          <div className="topbar-user-info" style={{ textAlign: "right", lineHeight: 1.25 }}>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>{usuario.nomeCompleto}</div>
-            <div style={{ fontSize: 11, opacity: 0.75 }}>{acesso === "nutricionista" ? "Nutricionista/Administrador" : acesso === "admin" ? "Administrador Geral" : (usuario.cargo || "Escola")}</div>
-          </div>
+          {!mobile && (
+            <div style={{ textAlign: "right", lineHeight: 1.25 }}>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>{usuario.nomeCompleto}</div>
+              <div style={{ fontSize: 11, opacity: 0.75 }}>{acesso === "nutricionista" ? "Nutricionista/Administrador" : acesso === "admin" ? "Administrador Geral" : (usuario.cargo || "Escola")}</div>
+            </div>
+          )}
           <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <UserIcon />
           </div>
@@ -164,26 +192,60 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
     </div>
   );
 }
-export function Sidebar({ aberta, colapsada, contexto, navItems, activeKey, onNavigate }) {
+export function Sidebar({ aberta, colapsada, mobile, contexto, navItems, activeKey, onNavigate }) {
+  const estiloPosicao = mobile
+    ? {
+        position: "fixed",
+        top: 58,
+        left: 0,
+        height: "calc(100vh - 58px)",
+        width: 258,
+        maxWidth: "82vw",
+        zIndex: 60,
+        transform: aberta ? "translateX(0)" : "translateX(-100%)",
+        transition: "transform 0.25s ease",
+        boxShadow: "8px 0 24px rgba(0,0,0,0.15)",
+        overflowY: "auto",
+      }
+    : {
+        position: "sticky",
+        top: 58,
+        height: "calc(100vh - 58px)",
+        width: colapsada ? 66 : 246,
+        transition: "width 0.2s ease",
+        overflowY: "auto",
+        flexShrink: 0,
+      };
+
   return (
-    <div className={`sidebar${aberta ? " aberta" : ""}`}>
-      {contexto && (
-        <div className="sidebar-nav-label" style={{ fontSize: 11, fontWeight: 800, color: COLORS.inkSoft, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 16, padding: "0 8px" }}>
+    <div
+      className="sidebar"
+      style={{
+        background: "#fff",
+        borderRight: `1px solid ${COLORS.line}`,
+        padding: colapsada && !mobile ? "18px 8px" : "18px 12px",
+        boxSizing: "border-box",
+        ...estiloPosicao,
+      }}
+    >
+      {contexto && !(colapsada && !mobile) && (
+        <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.inkSoft, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 16, padding: "0 8px" }}>
           {contexto}
         </div>
       )}
       <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {navItems.map((item) => {
           const ativo = activeKey === item.key;
+          const soIcone = colapsada && !mobile;
           return (
             <button
               key={item.key}
-              className="sidebar-nav-btn"
               title={item.label}
               onClick={() => onNavigate(item.key)}
               style={{
                 display: "flex",
                 alignItems: "center",
+                justifyContent: soIcone ? "center" : "flex-start",
                 gap: 10,
                 padding: "10px 12px",
                 borderRadius: 10,
@@ -198,7 +260,7 @@ export function Sidebar({ aberta, colapsada, contexto, navItems, activeKey, onNa
               }}
             >
               <span style={{ fontSize: 17, flexShrink: 0 }}>{item.icon}</span>
-              <span className="sidebar-nav-label">{item.label}</span>
+              {!soIcone && <span>{item.label}</span>}
             </button>
           );
         })}
@@ -224,6 +286,7 @@ export function PageHeader({ icon, title }) {
   );
 }
 export function AppShell({ usuario, db, setDb, acesso, escolaLogada, navItems, activeKey, onNavigate, onSair, children }) {
+  const mobile = useTelaPequena(880);
   const [sidebarAberta, setSidebarAberta] = useState(false);
   const [sidebarColapsada, setSidebarColapsada] = useState(false);
   const escola = db.escolas.find((e) => e.id === escolaLogada);
@@ -231,7 +294,7 @@ export function AppShell({ usuario, db, setDb, acesso, escolaLogada, navItems, a
   const itemAtivo = navItems.find((n) => n.key === activeKey);
 
   function alternarMenu() {
-    if (typeof window !== "undefined" && window.innerWidth <= 880) {
+    if (mobile) {
       setSidebarAberta((v) => !v);
     } else {
       setSidebarColapsada((v) => !v);
@@ -249,18 +312,24 @@ export function AppShell({ usuario, db, setDb, acesso, escolaLogada, navItems, a
         onSair={onSair}
         onToggleSidebar={alternarMenu}
       />
-      <div className={`app-shell${sidebarColapsada ? " colapsada" : ""}`}>
-        <div className={`sidebar-overlay${sidebarAberta ? " aberta" : ""}`} onClick={() => setSidebarAberta(false)} />
+      <div style={{ display: "flex", alignItems: "stretch", minHeight: "calc(100vh - 58px)" }}>
+        {mobile && sidebarAberta && (
+          <div
+            onClick={() => setSidebarAberta(false)}
+            style={{ position: "fixed", inset: 0, top: 58, background: "rgba(20,30,20,0.45)", zIndex: 55 }}
+          />
+        )}
         <Sidebar
           aberta={sidebarAberta}
           colapsada={sidebarColapsada}
+          mobile={mobile}
           contexto={contexto}
           navItems={navItems}
           activeKey={activeKey}
           onNavigate={(k) => { onNavigate(k); setSidebarAberta(false); }}
         />
-        <div className="shell-content">
-          <div className="shell-content-inner">
+        <div style={{ flex: 1, minWidth: 0, padding: mobile ? "18px 16px 60px" : "24px 22px 60px", boxSizing: "border-box" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
             {itemAtivo && <PageHeader icon={itemAtivo.icon} title={itemAtivo.label} />}
             {children}
           </div>
