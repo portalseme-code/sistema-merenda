@@ -7,5 +7,5 @@ import react from '@vitejs/plugin-react';
 // o base deve ser '/refeicoes-escolares/'.
 export default defineConfig({
   plugins: [react()],
-  base: '/sistema-refeicoes-escolares/',
+  base: '/sistema-merenda/',
 });
