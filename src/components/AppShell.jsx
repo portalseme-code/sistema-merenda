@@ -118,7 +118,7 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
           >
             <HamburgerIcon />
           </button>
-          <img src={logoSigae} alt="SIGAE" style={{ width: 34, height: 34, borderRadius: 8, objectFit: "cover" }} />
+          <img src={logoSigae} alt="SIGAE" style={{ height: 30, width: "auto", display: "block" }} />
           <div style={{ fontWeight: 700, fontSize: 15.5, letterSpacing: 0.2, fontFamily: FONT_DISPLAY }}>Alimentação Escolar · SEME</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

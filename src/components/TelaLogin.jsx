@@ -111,7 +111,7 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
           }}
         >
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <img src={logoSigae} alt="SIGAE" style={{ width: 92, height: 92, borderRadius: 16, objectFit: "cover", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }} />
+            <img src={logoSigae} alt="SIGAE" style={{ width: 220, height: "auto", filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.25))" }} />
           </div>
           <div
             style={{
