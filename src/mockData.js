@@ -4,6 +4,8 @@ export const SEED = {
   modalidades: [],
   tiposRefeicao: [],
   meses: [],
+  categorias: [],
+  subcategorias: [],
   insumos: [],
   cardapios: [],
   lancamentos: [],

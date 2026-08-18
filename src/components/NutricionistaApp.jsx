@@ -524,6 +524,8 @@ export function Cadastros({ db, setDb, usuario }) {
       <Tabs
         tabs={[
           { key: "insumos", label: "Insumos" },
+          { key: "categorias", label: "Categorias" },
+          { key: "subcategorias", label: "Subcategorias" },
           { key: "modalidades", label: "Modalidades" },
           { key: "tiposRefeicao", label: "Tipos de refeição" },
           { key: "turnos", label: "Turnos" },
@@ -535,7 +537,18 @@ export function Cadastros({ db, setDb, usuario }) {
         active={sub}
         onChange={setSub}
       />
-      {sub === "insumos" && <CadastroSimples db={db} setDb={setDb} usuario={usuario} chave="insumos" titulo="Insumo" campos={[{ key: "nome", label: "Nome do insumo" }]} />}
+      {sub === "insumos" && <CadastroInsumos db={db} setDb={setDb} usuario={usuario} />}
+      {sub === "categorias" && (
+        <CadastroSimples
+          db={db}
+          setDb={setDb}
+          usuario={usuario}
+          chave="categorias"
+          titulo="Categoria"
+          campos={[{ key: "nome", label: "Nome da categoria" }]}
+        />
+      )}
+      {sub === "subcategorias" && <CadastroSubcategorias db={db} setDb={setDb} usuario={usuario} />}
       {sub === "modalidades" && (
         <CadastroSimples
           db={db}
@@ -588,6 +601,181 @@ export function Cadastros({ db, setDb, usuario }) {
     </div>
   );
 }
+
+export function CadastroSubcategorias({ db, setDb, usuario }) {
+  const vazio = { nome: "", categoriaId: db.categorias[0] ? db.categorias[0].id : "" };
+  const [form, setForm] = useState(vazio);
+  const [editandoId, setEditandoId] = useState(null);
+
+  const nomeCategoria = (id) => db.categorias.find((c) => c.id === id)?.nome || "—";
+
+  function salvar() {
+    if (!form.nome) {
+      alert("Informe o nome da subcategoria.");
+      return;
+    }
+    if (!form.categoriaId) {
+      alert("Selecione a categoria.");
+      return;
+    }
+    if (editandoId) {
+      setDb((prev) => ({
+        ...prev,
+        subcategorias: prev.subcategorias.map((s) => (s.id === editandoId ? { ...s, nome: form.nome, categoriaId: form.categoriaId } : s)),
+      }));
+      registrarHistorico(setDb, usuario, `Editou a subcategoria: ${form.nome}.`);
+      setEditandoId(null);
+    } else {
+      const novo = { id: "sub" + Date.now(), nome: form.nome, categoriaId: form.categoriaId };
+      setDb((prev) => ({ ...prev, subcategorias: [...prev.subcategorias, novo] }));
+      registrarHistorico(setDb, usuario, `Cadastrou a subcategoria: ${form.nome}.`);
+    }
+    setForm(vazio);
+  }
+
+  function editar(s) {
+    setEditandoId(s.id);
+    setForm({ nome: s.nome, categoriaId: s.categoriaId });
+  }
+
+  function excluir(s) {
+    if (!window.confirm(`Excluir a subcategoria "${s.nome}"?`)) return;
+    setDb((prev) => ({ ...prev, subcategorias: prev.subcategorias.filter((x) => x.id !== s.id) }));
+    registrarHistorico(setDb, usuario, `Excluiu a subcategoria: ${s.nome}.`);
+  }
+
+  return (
+    <div className="cadastro-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 20 }}>
+      <Card>
+        <h3 style={{ marginTop: 0, fontSize: 15.5, fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark }}>{editandoId ? "Editar subcategoria" : "Nova subcategoria"}</h3>
+        {db.categorias.length === 0 && (
+          <div style={{ fontSize: 13, color: COLORS.inkSoft, marginBottom: 12 }}>Cadastre uma categoria primeiro, na aba "Categorias".</div>
+        )}
+        <Field label="Categoria">
+          <select style={inputStyle} value={form.categoriaId} onChange={(e) => setForm({ ...form, categoriaId: e.target.value })}>
+            <option value="" disabled>Selecione</option>
+            {db.categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </Field>
+        <Field label="Nome da subcategoria">
+          <input style={inputStyle} value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value.toUpperCase() })} />
+        </Field>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Btn onClick={salvar}>{editandoId ? "Salvar alterações" : "Cadastrar"}</Btn>
+          {editandoId && <Btn variant="ghost" onClick={() => { setEditandoId(null); setForm(vazio); }}>Cancelar</Btn>}
+        </div>
+      </Card>
+      <Card>
+        <h3 style={{ marginTop: 0, fontSize: 15.5, fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark }}>Subcategorias cadastradas</h3>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
+          <tbody>
+            {db.subcategorias.map((s) => (
+              <tr key={s.id} style={{ borderTop: `1px solid ${COLORS.line}` }}>
+                <td style={{ padding: 8 }}>{s.nome} — {nomeCategoria(s.categoriaId)}</td>
+                <td style={{ padding: 8, textAlign: "right", whiteSpace: "nowrap" }}>
+                  <Btn small variant="secondary" onClick={() => editar(s)}>Editar</Btn>{" "}
+                  <Btn small variant="danger" onClick={() => excluir(s)}>Excluir</Btn>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
+export function CadastroInsumos({ db, setDb, usuario }) {
+  const vazio = { nome: "", categoriaId: "", subcategoriaId: "" };
+  const [form, setForm] = useState(vazio);
+  const [editandoId, setEditandoId] = useState(null);
+
+  const nomeCategoria = (id) => db.categorias.find((c) => c.id === id)?.nome || "";
+  const nomeSubcategoria = (id) => db.subcategorias.find((s) => s.id === id)?.nome || "";
+  const subcategoriasFiltradas = db.subcategorias.filter((s) => !form.categoriaId || s.categoriaId === form.categoriaId);
+
+  function salvar() {
+    if (!form.nome) {
+      alert("Informe o nome do insumo.");
+      return;
+    }
+    if (editandoId) {
+      setDb((prev) => ({
+        ...prev,
+        insumos: prev.insumos.map((i) => (i.id === editandoId ? { ...i, nome: form.nome, categoriaId: form.categoriaId || null, subcategoriaId: form.subcategoriaId || null } : i)),
+      }));
+      registrarHistorico(setDb, usuario, `Editou o insumo: ${form.nome}.`);
+      setEditandoId(null);
+    } else {
+      const novo = { id: "ins" + Date.now(), nome: form.nome, categoriaId: form.categoriaId || null, subcategoriaId: form.subcategoriaId || null };
+      setDb((prev) => ({ ...prev, insumos: [...prev.insumos, novo] }));
+      registrarHistorico(setDb, usuario, `Cadastrou o insumo: ${form.nome}.`);
+    }
+    setForm(vazio);
+  }
+
+  function editar(i) {
+    setEditandoId(i.id);
+    setForm({ nome: i.nome, categoriaId: i.categoriaId || "", subcategoriaId: i.subcategoriaId || "" });
+  }
+
+  function excluir(i) {
+    if (!window.confirm(`Excluir o insumo "${i.nome}"?`)) return;
+    setDb((prev) => ({ ...prev, insumos: prev.insumos.filter((x) => x.id !== i.id) }));
+    registrarHistorico(setDb, usuario, `Excluiu o insumo: ${i.nome}.`);
+  }
+
+  return (
+    <div className="cadastro-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 20 }}>
+      <Card>
+        <h3 style={{ marginTop: 0, fontSize: 15.5, fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark }}>{editandoId ? "Editar insumo" : "Novo insumo"}</h3>
+        <Field label="Nome do insumo">
+          <input style={inputStyle} value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value.toUpperCase() })} />
+        </Field>
+        <Field label="Categoria (opcional)">
+          <select style={inputStyle} value={form.categoriaId} onChange={(e) => setForm({ ...form, categoriaId: e.target.value, subcategoriaId: "" })}>
+            <option value="">Nenhuma</option>
+            {db.categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </Field>
+        <Field label="Subcategoria (opcional)">
+          <select style={inputStyle} value={form.subcategoriaId} onChange={(e) => setForm({ ...form, subcategoriaId: e.target.value })} disabled={!form.categoriaId}>
+            <option value="">Nenhuma</option>
+            {subcategoriasFiltradas.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+          </select>
+        </Field>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Btn onClick={salvar}>{editandoId ? "Salvar alterações" : "Cadastrar"}</Btn>
+          {editandoId && <Btn variant="ghost" onClick={() => { setEditandoId(null); setForm(vazio); }}>Cancelar</Btn>}
+        </div>
+      </Card>
+      <Card>
+        <h3 style={{ marginTop: 0, fontSize: 15.5, fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark }}>Insumos cadastrados</h3>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
+          <tbody>
+            {db.insumos.map((i) => (
+              <tr key={i.id} style={{ borderTop: `1px solid ${COLORS.line}` }}>
+                <td style={{ padding: 8 }}>
+                  {i.nome}
+                  {(i.categoriaId || i.subcategoriaId) && (
+                    <span style={{ color: COLORS.inkSoft }}>
+                      {" — "}{nomeCategoria(i.categoriaId)}{i.subcategoriaId ? ` / ${nomeSubcategoria(i.subcategoriaId)}` : ""}
+                    </span>
+                  )}
+                </td>
+                <td style={{ padding: 8, textAlign: "right", whiteSpace: "nowrap" }}>
+                  <Btn small variant="secondary" onClick={() => editar(i)}>Editar</Btn>{" "}
+                  <Btn small variant="danger" onClick={() => excluir(i)}>Excluir</Btn>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
 export function CadastroSimples({ db, setDb, chave, titulo, campos, usuario }) {
   const vazio = {};
   campos.forEach((c) => (vazio[c.key] = ""));

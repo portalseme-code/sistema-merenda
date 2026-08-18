@@ -169,7 +169,7 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
           <Field label="Nome completo">
             <input style={inputStyle} value={nomeSolicitante} onChange={(e) => setNomeSolicitante(e.target.value.toUpperCase())} />
           </Field>
-          <Field label="Escola em que trabalha">
+          <Field label="LOCAL DE TRABALHO">
             <input style={inputStyle} value={escolaSolicitante} onChange={(e) => setEscolaSolicitante(e.target.value.toUpperCase())} placeholder="Ex: EMEIEF Amarilis Fernandes Garcia" />
           </Field>
           <Field label="E-mail">
@@ -178,7 +178,7 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
           <Field label="Telefone">
             <input style={inputStyle} value={telefoneSolicitante} onChange={(e) => setTelefoneSolicitante(e.target.value)} placeholder="(27) 90000-0000" />
           </Field>
-          <Field label="Cargo">
+          <Field label="TIPO DE ACESSO">
             <select style={inputStyle} value={cargoSolicitante} onChange={(e) => setCargoSolicitante(e.target.value)}>
               <option value="Nutricionista">Nutricionista</option>
               <option value="Escola">Escola</option>

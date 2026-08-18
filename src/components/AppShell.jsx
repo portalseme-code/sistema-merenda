@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { COLORS, FONT_DISPLAY } from '../theme.js';
-import { fmtDataHora } from '../utils.js';
-import { BellIcon, HamburgerIcon, UserIcon, ChevronIcon, Btn } from './ui.jsx';
+import { fmtDataHora, registrarHistorico } from '../utils.js';
+import { BellIcon, HamburgerIcon, UserIcon, ChevronIcon, Btn, Field, inputStyle } from './ui.jsx';
 import logoSigae from '../assets/logo-sigae.png';
 
 /**
@@ -116,8 +116,75 @@ export function AppStyles() {
     `}</style>
   );
 }
+function PainelTrocarSenha({ usuario, setDb, onFechar }) {
+  const [senhaAtual, setSenhaAtual] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [erro, setErro] = useState("");
+  const [sucesso, setSucesso] = useState(false);
+
+  function salvar() {
+    if (String(usuario.senha ?? "").trim() !== senhaAtual.trim()) {
+      setErro("Senha atual incorreta.");
+      return;
+    }
+    if (!novaSenha.trim()) {
+      setErro("Informe a nova senha.");
+      return;
+    }
+    if (novaSenha.trim() !== confirmarSenha.trim()) {
+      setErro("A confirmação não bate com a nova senha.");
+      return;
+    }
+    setDb((prev) => ({
+      ...prev,
+      usuarios: prev.usuarios.map((u) => (u.id === usuario.id ? { ...u, senha: novaSenha.trim() } : u)),
+    }));
+    registrarHistorico(setDb, usuario, "Alterou a própria senha.");
+    setErro("");
+    setSucesso(true);
+  }
+
+  return (
+    <div
+      style={{
+        position: "absolute", right: 0, top: 42, width: 280, maxWidth: "88vw",
+        background: "#fff", borderRadius: 12, boxShadow: "0 12px 32px rgba(0,0,0,0.25)", zIndex: 46,
+        padding: 16, color: COLORS.ink,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <div style={{ fontWeight: 700, fontSize: 13.5 }}>Alterar minha senha</div>
+        <button onClick={onFechar} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.inkSoft, fontSize: 16 }}>✕</button>
+      </div>
+
+      {sucesso ? (
+        <div>
+          <div style={{ fontSize: 13, color: COLORS.good, fontWeight: 700, marginBottom: 10 }}>✓ Senha alterada com sucesso.</div>
+          <Btn small variant="secondary" onClick={onFechar}>Fechar</Btn>
+        </div>
+      ) : (
+        <>
+          <Field label="Senha atual">
+            <input type="password" style={inputStyle} value={senhaAtual} onChange={(e) => { setSenhaAtual(e.target.value); setErro(""); }} autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
+          </Field>
+          <Field label="Nova senha">
+            <input type="password" style={inputStyle} value={novaSenha} onChange={(e) => { setNovaSenha(e.target.value); setErro(""); }} autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
+          </Field>
+          <Field label="Confirmar nova senha">
+            <input type="password" style={inputStyle} value={confirmarSenha} onChange={(e) => { setConfirmarSenha(e.target.value); setErro(""); }} autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
+          </Field>
+          {erro && <div style={{ color: COLORS.warn, fontSize: 12.5, fontWeight: 600, marginBottom: 8 }}>{erro}</div>}
+          <Btn small onClick={salvar}>Salvar nova senha</Btn>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSidebar }) {
   const [abrirNotif, setAbrirNotif] = useState(false);
+  const [alterarSenhaAberto, setAlterarSenhaAberto] = useState(false);
   const mobile = useTelaPequena(560);
   const escolaLogada = escola ? escola.id : null;
 
@@ -181,8 +248,17 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
               <div style={{ fontSize: 11, opacity: 0.75 }}>{acesso === "nutricionista" ? "Nutricionista/Administrador" : acesso === "admin" ? "Administrador Geral" : (usuario.cargo || "Escola")}</div>
             </div>
           )}
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <UserIcon />
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setAlterarSenhaAberto((v) => !v)}
+              title="Minha conta"
+              style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.15)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", color: "#fff" }}
+            >
+              <UserIcon />
+            </button>
+            {alterarSenhaAberto && (
+              <PainelTrocarSenha usuario={usuario} setDb={setDb} onFechar={() => setAlterarSenhaAberto(false)} />
+            )}
           </div>
           <Btn variant="ghost" onClick={onSair}>
             <span style={{ color: "#fff" }}>Sair</span>
