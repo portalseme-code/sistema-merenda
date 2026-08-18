@@ -137,7 +137,7 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
           </div>
         </div>
 
-        <div style={{ flex: "1 1 56%", padding: "40px 36px", maxHeight: "92vh", overflowY: "auto" }}>
+        <div className="login-panel" style={{ flex: "1 1 56%", padding: "40px 36px", maxHeight: "92vh", overflowY: "auto" }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.primary, letterSpacing: 1.2, textTransform: "uppercase" }}>
             Secretaria Municipal de Educação
           </div>

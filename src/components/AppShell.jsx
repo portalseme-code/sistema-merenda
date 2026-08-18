@@ -80,10 +80,12 @@ export function AppStyles() {
         .header-inner { flex-direction: column !important; align-items: flex-start !important; gap: 10px; }
         .stat-row { flex-direction: column !important; }
         .topbar-user-info { display: none !important; }
+        .header-title-text { display: none !important; }
       }
       @media (max-width: 600px) {
         input, select, textarea, button { font-size: 16px !important; }
         .card-pad { padding: 16px !important; }
+        .login-panel { padding: 26px 18px !important; }
       }
       @media (max-width: 680px) {
         .login-illustration { display: none; }
@@ -118,8 +120,8 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
           >
             <HamburgerIcon />
           </button>
-          <img src={logoSigae} alt="SIGAE" style={{ height: 30, width: "auto", display: "block" }} />
-          <div style={{ fontWeight: 700, fontSize: 15.5, letterSpacing: 0.2, fontFamily: FONT_DISPLAY }}>Alimentação Escolar · SEME</div>
+          <img src={logoSigae} alt="SIGAE" style={{ height: 30, width: "auto", display: "block", flexShrink: 0 }} />
+          <div className="header-title-text" style={{ fontWeight: 700, fontSize: 15.5, letterSpacing: 0.2, fontFamily: FONT_DISPLAY, whiteSpace: "nowrap" }}>Alimentação Escolar · SEME</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ position: "relative" }}>
