@@ -46,8 +46,8 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
   const icones = ["🍚", "🥗", "🍊", "🍗", "🥕", "🍝", "🥦", "🌾"];
 
   function entrar() {
-    const usuario = db.usuarios.find((u) => u.login.toLowerCase() === login.trim().toLowerCase());
-    if (!usuario || usuario.senha !== senha) {
+    const usuario = db.usuarios.find((u) => u.login && u.login.toString().toLowerCase() === login.trim().toLowerCase());
+    if (!usuario || String(usuario.senha ?? "") !== String(senha)) {
       setErro("Usuário ou senha inválidos.");
       return;
     }
