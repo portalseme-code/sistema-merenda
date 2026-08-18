@@ -47,7 +47,7 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
 
   function entrar() {
     const usuario = db.usuarios.find((u) => u.login && u.login.toString().toLowerCase() === login.trim().toLowerCase());
-    if (!usuario || String(usuario.senha ?? "") !== String(senha)) {
+    if (!usuario || String(usuario.senha ?? "").trim() !== senha.trim()) {
       setErro("Usuário ou senha inválidos.");
       return;
     }
@@ -127,7 +127,7 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
       {tela === "login" && (
         <>
           <Field label="Usuário">
-            <input style={inputStyle} value={login} onChange={(e) => { setLogin(e.target.value); setErro(""); }} placeholder="NOME.SOBRENOME" onKeyDown={(e) => e.key === "Enter" && entrar()} />
+            <input style={inputStyle} value={login} onChange={(e) => { setLogin(e.target.value); setErro(""); }} placeholder="NOME.SOBRENOME" onKeyDown={(e) => e.key === "Enter" && entrar()} autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
           </Field>
           <Field label="Senha">
             <SenhaInput style={inputStyle} value={senha} onChange={(e) => { setSenha(e.target.value); setErro(""); }} onKeyDown={(e) => e.key === "Enter" && entrar()} />

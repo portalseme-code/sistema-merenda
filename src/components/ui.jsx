@@ -351,6 +351,10 @@ export function SenhaInput({ value, onChange, style, placeholder, onKeyDown }) {
         onChange={onChange}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
+        autoCapitalize="off"
+        autoCorrect="off"
+        autoComplete="off"
+        spellCheck={false}
       />
       <button
         type="button"
