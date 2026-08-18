@@ -701,7 +701,7 @@ export function CadastroSimples({ db, setDb, chave, titulo, campos, usuario }) {
   );
 }
 export function CadastroUsuarios({ db, setDb, usuario }) {
-  const vazio = { nomeCompleto: "", email: "", cargo: "", nivelAcesso: "escola", escolaId: db.escolas[0] ? db.escolas[0].id : "" };
+  const vazio = { nomeCompleto: "", email: "", telefone: "", localTrabalho: "", cargo: "", nivelAcesso: "escola", escolaId: db.escolas[0] ? db.escolas[0].id : "" };
   const [form, setForm] = useState(vazio);
   const [editandoId, setEditandoId] = useState(null);
 
@@ -721,7 +721,7 @@ export function CadastroUsuarios({ db, setDb, usuario }) {
         ...prev,
         usuarios: prev.usuarios.map((u) =>
           u.id === editandoId
-            ? { ...u, nomeCompleto: form.nomeCompleto, email: form.email, cargo: form.cargo, nivelAcesso: form.nivelAcesso, escolaId: form.nivelAcesso === "escola" ? form.escolaId : null }
+            ? { ...u, nomeCompleto: form.nomeCompleto, email: form.email, telefone: form.telefone, localTrabalho: form.localTrabalho, cargo: form.cargo, nivelAcesso: form.nivelAcesso, escolaId: form.nivelAcesso === "escola" ? form.escolaId : null }
             : u
         ),
       }));
@@ -736,6 +736,8 @@ export function CadastroUsuarios({ db, setDb, usuario }) {
         login,
         senha,
         email: form.email,
+        telefone: form.telefone,
+        localTrabalho: form.localTrabalho,
         cargo: form.cargo,
         nivelAcesso: form.nivelAcesso,
         escolaId: form.nivelAcesso === "escola" ? form.escolaId : null,
@@ -749,7 +751,15 @@ export function CadastroUsuarios({ db, setDb, usuario }) {
 
   function editar(u) {
     setEditandoId(u.id);
-    setForm({ nomeCompleto: u.nomeCompleto, email: u.email, cargo: u.cargo, nivelAcesso: u.nivelAcesso, escolaId: u.escolaId || (db.escolas[0] ? db.escolas[0].id : "") });
+    setForm({
+      nomeCompleto: u.nomeCompleto,
+      email: u.email,
+      telefone: u.telefone || "",
+      localTrabalho: u.localTrabalho || "",
+      cargo: u.cargo,
+      nivelAcesso: u.nivelAcesso,
+      escolaId: u.escolaId || (db.escolas[0] ? db.escolas[0].id : ""),
+    });
   }
 
   function redefinirSenha(u) {
@@ -775,6 +785,12 @@ export function CadastroUsuarios({ db, setDb, usuario }) {
         </Field>
         <Field label="E-mail">
           <input type="email" style={inputStyle} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        </Field>
+        <Field label="Telefone">
+          <input style={inputStyle} value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="(27) 90000-0000" />
+        </Field>
+        <Field label="Local que trabalha">
+          <input style={inputStyle} value={form.localTrabalho} onChange={(e) => setForm({ ...form, localTrabalho: e.target.value.toUpperCase() })} placeholder="Ex: EMEIEF Amarilis Fernandes Garcia" />
         </Field>
         <Field label="Cargo">
           <input style={inputStyle} value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value.toUpperCase() })} placeholder="Ex: Merendeira, Diretor, Nutricionista" />
@@ -806,8 +822,13 @@ export function CadastroUsuarios({ db, setDb, usuario }) {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13.5 }}>{u.nomeCompleto}</div>
                   <div style={{ fontSize: 12, color: COLORS.inkSoft }}>
-                    {u.cargo} · login: {u.login} · {u.nivelAcesso === "nutricionista" ? "Nutricionista/Administrador" : `Escola — ${nomeEscola(u.escolaId)}`}
+                    {u.cargo} · login: {u.login} · {u.nivelAcesso === "nutricionista" ? "Nutricionista/Administrador" : u.nivelAcesso === "admin" ? "Administrador Geral" : `Escola — ${nomeEscola(u.escolaId)}`}
                   </div>
+                  {(u.localTrabalho || u.telefone) && (
+                    <div style={{ fontSize: 12, color: COLORS.inkSoft }}>
+                      {u.localTrabalho && `${u.localTrabalho}`}{u.localTrabalho && u.telefone && " · "}{u.telefone}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <Btn small variant="secondary" onClick={() => editar(u)}>Editar</Btn>

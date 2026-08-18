@@ -24,6 +24,8 @@ function CartaoSolicitacao({ s, db, setDb, usuario }) {
       login,
       senha: SENHA_PADRAO_SOLICITACAO,
       email: s.email,
+      telefone: s.telefone,
+      localTrabalho: s.escola,
       cargo: s.cargo === 'Escola' ? 'Merendeira' : 'Nutricionista',
       nivelAcesso: s.cargo === 'Escola' ? 'escola' : 'nutricionista',
       escolaId: s.cargo === 'Escola' ? escolaId : null,

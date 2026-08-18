@@ -10,9 +10,9 @@ export const SEED = {
   mesesFechados: [],
   fechamentos: [],
   usuarios: [
-    { id: "u1", nomeCompleto: "Nutricionista SEME", login: "NUTRI.SEME", senha: "123", email: "nutri.seme@seme.gov.br", cargo: "Nutricionista", nivelAcesso: "nutricionista", escolaId: null },
-    { id: "u2", nomeCompleto: "Escola SEME", login: "ESCOLA.SEME", senha: "123", email: "escola.seme@seme.gov.br", cargo: "Merendeira", nivelAcesso: "escola", escolaId: null },
-    { id: "u3", nomeCompleto: "Administrador Geral", login: "ADM.SEME", senha: "1898", email: "adm.seme@seme.gov.br", cargo: "Administrador Geral", nivelAcesso: "admin", escolaId: null },
+    { id: "u1", nomeCompleto: "Nutricionista SEME", login: "NUTRI.SEME", senha: "123", email: "nutri.seme@seme.gov.br", cargo: "Nutricionista", nivelAcesso: "nutricionista", escolaId: null, localTrabalho: "SEME", telefone: "" },
+    { id: "u2", nomeCompleto: "Escola SEME", login: "ESCOLA.SEME", senha: "123", email: "escola.seme@seme.gov.br", cargo: "Merendeira", nivelAcesso: "escola", escolaId: null, localTrabalho: "", telefone: "" },
+    { id: "u3", nomeCompleto: "Administrador Geral", login: "ADM.SEME", senha: "1898", email: "adm.seme@seme.gov.br", cargo: "Administrador Geral", nivelAcesso: "admin", escolaId: null, localTrabalho: "SEME", telefone: "" },
   ],
   solicitacoes: [],
   historico: [],
