@@ -126,9 +126,10 @@ export function buscarCardapioVigente(cardapios, { modalidadeId, tipoRefeicaoId,
 export function gerarLoginUsuario(nomeCompleto) {
   const partes = nomeCompleto.trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return "";
-  if (partes.length === 1) return partes[0].toLowerCase();
-  return `${partes[0]}.${partes[partes.length - 1]}`.toLowerCase();
+  if (partes.length === 1) return partes[0].toUpperCase();
+  return `${partes[0]}.${partes[partes.length - 1]}`.toUpperCase();
 }
 export function gerarSenhaAleatoria() {
   return Math.random().toString(36).slice(-8);
 }
+export const SENHA_PADRAO_SOLICITACAO = "Abc@2026";

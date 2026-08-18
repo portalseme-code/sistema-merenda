@@ -218,7 +218,7 @@ export function NovoLancamento({ db, setDb, escolaId, usuario, editandoId, onFim
           </Field>
 
           <Field label="Ocorrência (opcional)" hint="Registre aqui qualquer situação que tenha acontecido no fornecimento da refeição.">
-            <textarea style={{ ...inputStyle, minHeight: 60 }} value={ocorrencia} onChange={(e) => setOcorrencia(e.target.value)} placeholder="Ex: item substituído por falta de entrega do fornecedor." />
+            <textarea style={{ ...inputStyle, minHeight: 60 }} value={ocorrencia} onChange={(e) => setOcorrencia(e.target.value.toUpperCase())} placeholder="Ex: item substituído por falta de entrega do fornecedor." />
           </Field>
         </FormSection>
 

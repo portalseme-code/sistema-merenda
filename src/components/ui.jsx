@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { COLORS, FONT_DISPLAY } from '../theme.js';
 
 export function PlateIcon({ size = 40 }) {
@@ -319,5 +320,50 @@ export function ChevronIcon({ direction = "left" }) {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d={d} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+export function EyeIcon({ aberto }) {
+  if (aberto) {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M9.9 5.3A10.6 10.6 0 0112 5c7 0 10.5 7 10.5 7a15.3 15.3 0 01-3.3 4.2M6.6 6.6C3.6 8.4 1.5 12 1.5 12s3.5 7 10.5 7c1.3 0 2.5-.2 3.6-.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.9 14.1a3 3 0 004.2-4.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function SenhaInput({ value, onChange, style, placeholder, onKeyDown }) {
+  const [mostrar, setMostrar] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        type={mostrar ? "text" : "password"}
+        style={{ ...style, paddingRight: 42 }}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+      />
+      <button
+        type="button"
+        onClick={() => setMostrar((v) => !v)}
+        title={mostrar ? "Ocultar senha" : "Mostrar senha"}
+        style={{
+          position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+          background: "transparent", border: "none", cursor: "pointer", padding: 4,
+          color: COLORS.inkSoft, display: "flex", alignItems: "center",
+        }}
+      >
+        <EyeIcon aberto={mostrar} />
+      </button>
+    </div>
   );
 }

@@ -1,13 +1,22 @@
 import { useState } from 'react';
 import { COLORS, FONT_DISPLAY, FONT_BODY } from '../theme.js';
-import { PlateIcon, Field, inputStyle, Btn } from './ui.jsx';
+import { PlateIcon, Field, inputStyle, Btn, SenhaInput } from './ui.jsx';
+import { registrarHistorico, notificar } from '../utils.js';
 
-export function TelaLogin({ db, onEntrar, carregando, erroConexao }) {
+export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
   const [login, setLogin] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
-  const [recuperar, setRecuperar] = useState(false);
+  const [tela, setTela] = useState("login"); // 'login' | 'recuperar' | 'solicitar'
   const [emailRecuperacao, setEmailRecuperacao] = useState("");
+
+  const [nomeSolicitante, setNomeSolicitante] = useState("");
+  const [escolaSolicitante, setEscolaSolicitante] = useState("");
+  const [emailSolicitante, setEmailSolicitante] = useState("");
+  const [telefoneSolicitante, setTelefoneSolicitante] = useState("");
+  const [cargoSolicitante, setCargoSolicitante] = useState("Nutricionista");
+  const [solicitacaoEnviada, setSolicitacaoEnviada] = useState(false);
+
   const icones = ["🍚", "🥗", "🍊", "🍗", "🥕", "🍝", "🥦", "🌾"];
 
   function entrar() {
@@ -27,8 +36,39 @@ export function TelaLogin({ db, onEntrar, carregando, erroConexao }) {
       return;
     }
     alert(`Instruções de redefinição de senha enviadas para ${usuario.email} (simulação — sem envio real neste protótipo).`);
-    setRecuperar(false);
+    setTela("login");
     setEmailRecuperacao("");
+  }
+
+  function enviarSolicitacao() {
+    if (!nomeSolicitante || !escolaSolicitante || !emailSolicitante || !telefoneSolicitante) {
+      alert("Preencha todos os campos.");
+      return;
+    }
+    const nova = {
+      id: "sol" + Date.now(),
+      nomeCompleto: nomeSolicitante,
+      escola: escolaSolicitante,
+      email: emailSolicitante,
+      telefone: telefoneSolicitante,
+      cargo: cargoSolicitante,
+      status: "Pendente",
+      criadoEm: new Date().toISOString(),
+    };
+    setDb((prev) => ({ ...prev, solicitacoes: [nova, ...(prev.solicitacoes || [])] }));
+    registrarHistorico(setDb, null, `Nova solicitação de acesso recebida: ${nomeSolicitante} (${cargoSolicitante}).`);
+    notificar(setDb, "admin", `Nova solicitação de acesso: ${nomeSolicitante} — ${cargoSolicitante}.`);
+    setSolicitacaoEnviada(true);
+  }
+
+  function reiniciarSolicitacao() {
+    setTela("login");
+    setSolicitacaoEnviada(false);
+    setNomeSolicitante("");
+    setEscolaSolicitante("");
+    setEmailSolicitante("");
+    setTelefoneSolicitante("");
+    setCargoSolicitante("Nutricionista");
   }
 
   return (
@@ -96,7 +136,7 @@ export function TelaLogin({ db, onEntrar, carregando, erroConexao }) {
           </div>
         </div>
 
-        <div style={{ flex: "1 1 56%", padding: "40px 36px" }}>
+        <div style={{ flex: "1 1 56%", padding: "40px 36px", maxHeight: "92vh", overflowY: "auto" }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.primary, letterSpacing: 1.2, textTransform: "uppercase" }}>
             Secretaria Municipal de Educação
           </div>
@@ -120,38 +160,81 @@ export function TelaLogin({ db, onEntrar, carregando, erroConexao }) {
             </div>
           )}
 
-          {!recuperar ? (
+          {tela === "login" && (
             <>
               <Field label="Usuário">
-                <input style={inputStyle} value={login} onChange={(e) => { setLogin(e.target.value); setErro(""); }} placeholder="nome.sobrenome" onKeyDown={(e) => e.key === "Enter" && entrar()} />
+                <input style={inputStyle} value={login} onChange={(e) => { setLogin(e.target.value); setErro(""); }} placeholder="NOME.SOBRENOME" onKeyDown={(e) => e.key === "Enter" && entrar()} />
               </Field>
               <Field label="Senha">
-                <input type="password" style={inputStyle} value={senha} onChange={(e) => { setSenha(e.target.value); setErro(""); }} onKeyDown={(e) => e.key === "Enter" && entrar()} />
+                <SenhaInput style={inputStyle} value={senha} onChange={(e) => { setSenha(e.target.value); setErro(""); }} onKeyDown={(e) => e.key === "Enter" && entrar()} />
               </Field>
 
               {erro && <div style={{ color: COLORS.warn, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{erro}</div>}
 
               <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
                 <Btn onClick={entrar}>Entrar</Btn>
-                <button onClick={() => setRecuperar(true)} style={{ background: "none", border: "none", color: COLORS.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 0 }}>
+                <button onClick={() => setTela("recuperar")} style={{ background: "none", border: "none", color: COLORS.primary, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 0 }}>
                   Esqueci minha senha
                 </button>
               </div>
 
-              <div style={{ fontSize: 11.5, color: COLORS.inkSoft, marginTop: 18, lineHeight: 1.5 }}>
-                Protótipo — usuários de exemplo: <strong>NUTRI.SEME</strong> (Nutricionista) e <strong>ESCOLA.SEME</strong> (Escola), senha <strong>123</strong> para ambos.
+              <div style={{ marginTop: 22, paddingTop: 18, borderTop: `1px solid ${COLORS.line}` }}>
+                <div style={{ fontSize: 13, color: COLORS.inkSoft, marginBottom: 8 }}>Ainda não tem acesso?</div>
+                <Btn variant="secondary" onClick={() => setTela("solicitar")}>Solicitar cadastro</Btn>
               </div>
             </>
-          ) : (
+          )}
+
+          {tela === "recuperar" && (
             <>
               <Field label="E-mail cadastrado" hint="Enviaremos instruções de redefinição de senha para este e-mail.">
                 <input type="email" style={inputStyle} value={emailRecuperacao} onChange={(e) => setEmailRecuperacao(e.target.value)} placeholder="seu.email@seme.gov.br" />
               </Field>
               <div style={{ display: "flex", gap: 12 }}>
                 <Btn onClick={solicitarRecuperacao}>Enviar instruções</Btn>
-                <Btn variant="ghost" onClick={() => setRecuperar(false)}>Voltar</Btn>
+                <Btn variant="ghost" onClick={() => setTela("login")}>Voltar</Btn>
               </div>
             </>
+          )}
+
+          {tela === "solicitar" && !solicitacaoEnviada && (
+            <>
+              <div style={{ fontSize: 13, color: COLORS.inkSoft, marginBottom: 14 }}>
+                Preencha os dados abaixo. O Administrador Geral vai analisar sua solicitação e enviar o login e a senha por e-mail.
+              </div>
+              <Field label="Nome completo">
+                <input style={inputStyle} value={nomeSolicitante} onChange={(e) => setNomeSolicitante(e.target.value.toUpperCase())} />
+              </Field>
+              <Field label="Escola em que trabalha">
+                <input style={inputStyle} value={escolaSolicitante} onChange={(e) => setEscolaSolicitante(e.target.value.toUpperCase())} placeholder="Ex: EMEIEF Amarilis Fernandes Garcia" />
+              </Field>
+              <Field label="E-mail">
+                <input type="email" style={inputStyle} value={emailSolicitante} onChange={(e) => setEmailSolicitante(e.target.value)} />
+              </Field>
+              <Field label="Telefone">
+                <input style={inputStyle} value={telefoneSolicitante} onChange={(e) => setTelefoneSolicitante(e.target.value)} placeholder="(27) 90000-0000" />
+              </Field>
+              <Field label="Cargo">
+                <select style={inputStyle} value={cargoSolicitante} onChange={(e) => setCargoSolicitante(e.target.value)}>
+                  <option value="Nutricionista">Nutricionista</option>
+                  <option value="Escola">Escola</option>
+                </select>
+              </Field>
+              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                <Btn onClick={enviarSolicitacao}>Enviar solicitação</Btn>
+                <Btn variant="ghost" onClick={() => setTela("login")}>Voltar</Btn>
+              </div>
+            </>
+          )}
+
+          {tela === "solicitar" && solicitacaoEnviada && (
+            <div style={{ background: COLORS.goodSoft, border: `1px solid ${COLORS.good}`, borderRadius: 10, padding: 16 }}>
+              <div style={{ fontWeight: 800, color: COLORS.good, marginBottom: 6 }}>✓ Solicitação enviada</div>
+              <div style={{ fontSize: 13.5, color: COLORS.ink, marginBottom: 14 }}>
+                Assim que for aprovada, você vai receber o login e a senha por e-mail.
+              </div>
+              <Btn variant="secondary" onClick={reiniciarSolicitacao}>Voltar para o login</Btn>
+            </div>
           )}
         </div>
       </div>

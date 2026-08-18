@@ -269,7 +269,7 @@ export function ParecerBox({ onDecidir }) {
   return (
     <div style={{ marginTop: 14, borderTop: `1px solid ${COLORS.line}`, paddingTop: 14 }}>
       <Field label="Parecer do nutricionista">
-        <textarea style={{ ...inputStyle, minHeight: 50 }} value={texto} onChange={(e) => setTexto(e.target.value)} />
+        <textarea style={{ ...inputStyle, minHeight: 50 }} value={texto} onChange={(e) => setTexto(e.target.value.toUpperCase())} />
       </Field>
       <div style={{ display: "flex", gap: 10 }}>
         <Btn onClick={() => onDecidir("Aprovado", texto)}>Aprovar Refeição</Btn>
@@ -771,13 +771,13 @@ export function CadastroUsuarios({ db, setDb, usuario }) {
       <Card>
         <h3 style={{ marginTop: 0, fontSize: 15.5, fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark }}>{editandoId ? "Editar usuário" : "Novo usuário"}</h3>
         <Field label="Nome completo">
-          <input style={inputStyle} value={form.nomeCompleto} onChange={(e) => setForm({ ...form, nomeCompleto: e.target.value })} />
+          <input style={inputStyle} value={form.nomeCompleto} onChange={(e) => setForm({ ...form, nomeCompleto: e.target.value.toUpperCase() })} />
         </Field>
         <Field label="E-mail">
           <input type="email" style={inputStyle} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </Field>
         <Field label="Cargo">
-          <input style={inputStyle} value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })} placeholder="Ex: Merendeira, Diretor, Nutricionista" />
+          <input style={inputStyle} value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value.toUpperCase() })} placeholder="Ex: Merendeira, Diretor, Nutricionista" />
         </Field>
         <Field label="Nível de acesso">
           <select style={inputStyle} value={form.nivelAcesso} onChange={(e) => setForm({ ...form, nivelAcesso: e.target.value })}>
@@ -997,7 +997,7 @@ export function CadastroCardapios({ db, setDb, usuario }) {
             </select>
           </Field>
           <Field label="Descrição">
-            <input style={inputStyle} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex: CARDÁPIO DE SEGUNDA — FUNDAMENTAL I" />
+            <input style={inputStyle} value={descricao} onChange={(e) => setDescricao(e.target.value.toUpperCase())} placeholder="Ex: CARDÁPIO DE SEGUNDA — FUNDAMENTAL I" />
           </Field>
         </div>
 

@@ -15,6 +15,10 @@ export const NAV_ESCOLA = [
   { key: "novo", label: "Novo lançamento", icon: "🍽️" },
   { key: "historico", label: "Meus lançamentos", icon: "📖" },
 ];
+export const NAV_ADMIN = [
+  { key: "solicitacoes", label: "Solicitações de Acesso", icon: "📥" },
+  { key: "usuarios", label: "Usuários", icon: "👤" },
+];
 export function AppStyles() {
   return (
     <style>{`
@@ -91,7 +95,7 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
   const escolaLogada = escola ? escola.id : null;
 
   const minhasNotificacoes = db.notificacoes
-    .filter((n) => (acesso === "nutricionista" ? n.destinatario === "nutricionista" : n.destinatario === escolaLogada || n.destinatario === "todas_escolas"))
+    .filter((n) => (acesso === "nutricionista" ? n.destinatario === "nutricionista" : acesso === "admin" ? n.destinatario === "admin" : n.destinatario === escolaLogada || n.destinatario === "todas_escolas"))
     .slice(0, 25);
   const naoLidas = minhasNotificacoes.filter((n) => !n.lida).length;
 
@@ -144,7 +148,7 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
           </div>
           <div className="topbar-user-info" style={{ textAlign: "right", lineHeight: 1.25 }}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>{usuario.nomeCompleto}</div>
-            <div style={{ fontSize: 11, opacity: 0.75 }}>{acesso === "nutricionista" ? "Nutricionista/Administrador" : (usuario.cargo || "Escola")}</div>
+            <div style={{ fontSize: 11, opacity: 0.75 }}>{acesso === "nutricionista" ? "Nutricionista/Administrador" : acesso === "admin" ? "Administrador Geral" : (usuario.cargo || "Escola")}</div>
           </div>
           <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <UserIcon />
@@ -220,7 +224,7 @@ export function AppShell({ usuario, db, setDb, acesso, escolaLogada, navItems, a
   const [sidebarAberta, setSidebarAberta] = useState(false);
   const [sidebarColapsada, setSidebarColapsada] = useState(false);
   const escola = db.escolas.find((e) => e.id === escolaLogada);
-  const contexto = acesso === "nutricionista" ? "Secretaria de Educação" : (escola ? escola.nome : "");
+  const contexto = acesso === "nutricionista" ? "Secretaria de Educação" : acesso === "admin" ? "Administração Geral" : (escola ? escola.nome : "");
   const itemAtivo = navItems.find((n) => n.key === activeKey);
 
   function alternarMenu() {
