@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { COLORS, FONT_DISPLAY, FONT_BODY } from '../theme.js';
-import { PlateIcon, Field, inputStyle, Btn, SenhaInput } from './ui.jsx';
+import { Field, inputStyle, Btn, SenhaInput } from './ui.jsx';
 import { registrarHistorico, notificar } from '../utils.js';
+import logoSigae from '../assets/logo-sigae.png';
 
 export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
   const [login, setLogin] = useState("");
@@ -110,7 +111,7 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
           }}
         >
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <PlateIcon size={72} />
+            <img src={logoSigae} alt="SIGAE" style={{ width: 92, height: 92, borderRadius: 16, objectFit: "cover", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }} />
           </div>
           <div
             style={{

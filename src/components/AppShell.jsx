@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { COLORS, FONT_DISPLAY } from '../theme.js';
 import { fmtDataHora } from '../utils.js';
-import { PlateIcon, BellIcon, HamburgerIcon, UserIcon, ChevronIcon, Btn } from './ui.jsx';
+import { BellIcon, HamburgerIcon, UserIcon, ChevronIcon, Btn } from './ui.jsx';
+import logoSigae from '../assets/logo-sigae.png';
 
 export const NAV_NUTRICIONISTA = [
   { key: "dashboard", label: "Painel", icon: "🥗" },
@@ -117,7 +118,7 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
           >
             <HamburgerIcon />
           </button>
-          <PlateIcon size={30} />
+          <img src={logoSigae} alt="SIGAE" style={{ width: 34, height: 34, borderRadius: 8, objectFit: "cover" }} />
           <div style={{ fontWeight: 700, fontSize: 15.5, letterSpacing: 0.2, fontFamily: FONT_DISPLAY }}>Alimentação Escolar · SEME</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
