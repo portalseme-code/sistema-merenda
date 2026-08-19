@@ -108,12 +108,19 @@ export function gerarSnapshotMes(db, mes) {
     valorTotal,
   };
 }
+export function cardapioEstaAprovado(c) {
+  // Compatibilidade: cardápios cadastrados antes dessa mudança não têm
+  // "status" — são considerados aprovados automaticamente, para não travar
+  // cardápios que já estavam em uso.
+  return !c.status || c.status === "Aprovado";
+}
 export function buscarCardapioVigente(cardapios, { modalidadeId, tipoRefeicaoId, turnoId, escolaId, data }) {
   const mes = mesReferenciaDe(data);
   const diaSemana = diaSemanaDe(data);
   return (
     cardapios.find(
       (c) =>
+        cardapioEstaAprovado(c) &&
         c.modalidadeId === modalidadeId &&
         c.tipoRefeicaoId === tipoRefeicaoId &&
         c.turnoId === turnoId &&

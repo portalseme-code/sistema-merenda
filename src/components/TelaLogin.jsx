@@ -182,6 +182,7 @@ export function TelaLogin({ db, setDb, onEntrar, carregando, erroConexao }) {
             <select style={inputStyle} value={cargoSolicitante} onChange={(e) => setCargoSolicitante(e.target.value)}>
               <option value="Nutricionista">Nutricionista</option>
               <option value="Escola">Escola</option>
+              <option value="Empresa">Empresa (fornecedora de alimentação)</option>
             </select>
           </Field>
           <div style={{ display: "flex", gap: 12, marginTop: 8 }}>

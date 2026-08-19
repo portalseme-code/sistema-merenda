@@ -29,6 +29,7 @@ function useTelaPequena(limite) {
 
 export const NAV_NUTRICIONISTA = [
   { key: "dashboard", label: "Painel", icon: "🥗" },
+  { key: "aprovacaoCardapios", label: "Aprovação de Cardápios", icon: "✅" },
   { key: "pendencias", label: "Pendências", icon: "📋" },
   { key: "cadastros", label: "Cadastros", icon: "🗂️" },
   { key: "relatorios", label: "Relatórios", icon: "📑" },
@@ -42,6 +43,11 @@ export const NAV_ESCOLA = [
 export const NAV_ADMIN = [
   { key: "solicitacoes", label: "Solicitações de Acesso", icon: "📥" },
   { key: "usuarios", label: "Usuários", icon: "👤" },
+];
+export const NAV_EMPRESA = [
+  { key: "insumos", label: "Insumos", icon: "🥕" },
+  { key: "cardapios", label: "Cardápios", icon: "📋" },
+  { key: "lancamentos", label: "Lançamentos e Pagamentos", icon: "💰" },
 ];
 export function AppStyles() {
   return (
@@ -189,7 +195,7 @@ export function TopBar({ usuario, acesso, escola, db, setDb, onSair, onToggleSid
   const escolaLogada = escola ? escola.id : null;
 
   const minhasNotificacoes = db.notificacoes
-    .filter((n) => (acesso === "nutricionista" ? n.destinatario === "nutricionista" : acesso === "admin" ? n.destinatario === "admin" : n.destinatario === escolaLogada || n.destinatario === "todas_escolas"))
+    .filter((n) => (acesso === "nutricionista" ? n.destinatario === "nutricionista" : acesso === "admin" ? n.destinatario === "admin" : acesso === "empresa" ? n.destinatario === "empresa" : n.destinatario === escolaLogada || n.destinatario === "todas_escolas"))
     .slice(0, 25);
   const naoLidas = minhasNotificacoes.filter((n) => !n.lida).length;
 
@@ -366,7 +372,7 @@ export function AppShell({ usuario, db, setDb, acesso, escolaLogada, navItems, a
   const [sidebarAberta, setSidebarAberta] = useState(false);
   const [sidebarColapsada, setSidebarColapsada] = useState(false);
   const escola = db.escolas.find((e) => e.id === escolaLogada);
-  const contexto = acesso === "nutricionista" ? "Secretaria de Educação" : acesso === "admin" ? "Administração Geral" : (escola ? escola.nome : "");
+  const contexto = acesso === "nutricionista" ? "Secretaria de Educação" : acesso === "admin" ? "Administração Geral" : acesso === "empresa" ? "Empresa Fornecedora" : (escola ? escola.nome : "");
   const itemAtivo = navItems.find((n) => n.key === activeKey);
 
   function alternarMenu() {

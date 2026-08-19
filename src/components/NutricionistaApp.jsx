@@ -3,6 +3,116 @@ import { COLORS, FONT_DISPLAY, CHART_PALETTE, DIAS_SEMANA } from '../theme.js';
 import { Card, SectionTitle, Field, inputStyle, Btn, Pill, Tabs, ItemChecklist, BarChartH, DonutChart, ChipInsumo, InfoBadge } from './ui.jsx';
 import { fmtData, fmtMoeda, fmtMes, fmtDataHora, mesReferenciaDe, diaSemanaDe, agora, buscarCardapioVigente, compararCardapio, gerarSnapshotMes, registrarHistorico, notificar, exportarCSV, gerarLoginUsuario, gerarSenhaAleatoria } from '../utils.js';
 
+function CartaoCardapioAprovacao({ c, db, setDb, usuario }) {
+  const [parecer, setParecer] = useState("");
+  const nomeModalidade = (id) => db.modalidades.find((m) => m.id === id)?.nome || id;
+  const nomeTipoRefeicao = (id) => db.tiposRefeicao.find((r) => r.id === id)?.nome || id;
+  const nomeTurno = (id) => db.turnos.find((t) => t.id === id)?.nome || id;
+  const nomeEscola = (id) => db.escolas.find((e) => e.id === id)?.nome || id;
+  const insumo = (id) => db.insumos.find((i) => i.id === id);
+
+  function decidir(novoStatus) {
+    if (novoStatus !== "Aprovado" && !parecer.trim()) {
+      alert("Escreva um parecer explicando o motivo.");
+      return;
+    }
+    setDb((prev) => ({
+      ...prev,
+      cardapios: prev.cardapios.map((x) =>
+        x.id === c.id ? { ...x, status: novoStatus, parecer: parecer.trim(), decididoEm: new Date().toISOString(), decididoPor: usuario ? usuario.nomeCompleto : "" } : x
+      ),
+    }));
+    registrarHistorico(setDb, usuario, `${novoStatus === "Aprovado" ? "Aprovou" : novoStatus === "Reprovado" ? "Reprovou" : "Solicitou alterações no"} cardápio "${c.descricao}".`);
+    if (novoStatus === "Aprovado") {
+      notificar(setDb, c.escolaIds || [], `Cardápio aprovado e disponível: ${c.descricao} (${fmtMes(c.mesReferencia)}).`);
+    }
+  }
+
+  return (
+    <Card>
+      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>{c.descricao}</div>
+          <div style={{ fontSize: 13, color: COLORS.inkSoft }}>
+            {fmtMes(c.mesReferencia)} · toda {c.diaSemana} · {nomeTurno(c.turnoId)} · {nomeModalidade(c.modalidadeId)} · {nomeTipoRefeicao(c.tipoRefeicaoId)}
+          </div>
+          <div style={{ fontSize: 12.5, color: COLORS.inkSoft, marginTop: 2 }}>
+            Escolas: {(c.escolaIds || []).map(nomeEscola).join(", ") || "—"}
+          </div>
+        </div>
+        <Pill tone="info">Aguardando análise</Pill>
+      </div>
+
+      <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {(c.itens || []).map((id) => {
+          const ins = insumo(id);
+          return <ChipInsumo key={id} label={ins ? ins.nome : id} tone="match" af={ins && ins.agriculturaFamiliar} />;
+        })}
+      </div>
+
+      <div style={{ marginTop: 14, borderTop: `1px solid ${COLORS.line}`, paddingTop: 14 }}>
+        <Field label="Parecer (obrigatório para reprovar ou solicitar alterações)">
+          <textarea style={{ ...inputStyle, minHeight: 50 }} value={parecer} onChange={(e) => setParecer(e.target.value.toUpperCase())} />
+        </Field>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Btn onClick={() => decidir("Aprovado")}>Aprovar cardápio</Btn>
+          <Btn variant="secondary" onClick={() => decidir("AlteracoesSolicitadas")}>Solicitar alterações</Btn>
+          <Btn variant="danger" onClick={() => decidir("Reprovado")}>Reprovar</Btn>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+export function AprovacaoCardapios({ db, setDb, usuario }) {
+  const [mostrarDecididos, setMostrarDecididos] = useState(false);
+  const pendentes = db.cardapios.filter((c) => c.status === "Enviado");
+  const decididos = db.cardapios.filter((c) => c.status === "Aprovado" || c.status === "Reprovado" || c.status === "AlteracoesSolicitadas");
+  const nomeModalidade = (id) => db.modalidades.find((m) => m.id === id)?.nome || id;
+  const nomeTipoRefeicao = (id) => db.tiposRefeicao.find((r) => r.id === id)?.nome || id;
+
+  const toneStatus = { Aprovado: "good", Reprovado: "warn", AlteracoesSolicitadas: "gold" };
+  const labelStatus = { Aprovado: "Aprovado", Reprovado: "Reprovado", AlteracoesSolicitadas: "Alterações solicitadas" };
+
+  return (
+    <div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {pendentes.length === 0 && (
+          <Card><div style={{ color: COLORS.inkSoft }}>Nenhum cardápio aguardando análise no momento.</div></Card>
+        )}
+        {pendentes.map((c) => <CartaoCardapioAprovacao key={c.id} c={c} db={db} setDb={setDb} usuario={usuario} />)}
+      </div>
+
+      {decididos.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <button
+            onClick={() => setMostrarDecididos((v) => !v)}
+            style={{ background: "none", border: "none", color: COLORS.primary, fontWeight: 700, fontSize: 13.5, cursor: "pointer", padding: 0, marginBottom: 12 }}
+          >
+            {mostrarDecididos ? "Ocultar" : "Ver"} cardápios já avaliados ({decididos.length})
+          </button>
+          {mostrarDecididos && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {decididos.map((c) => (
+                <Card key={c.id}>
+                  <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{c.descricao}</div>
+                      <div style={{ fontSize: 12.5, color: COLORS.inkSoft }}>{fmtMes(c.mesReferencia)} · {nomeModalidade(c.modalidadeId)} · {nomeTipoRefeicao(c.tipoRefeicaoId)}</div>
+                      {c.parecer && <div style={{ fontSize: 12.5, color: COLORS.inkSoft, marginTop: 4 }}><strong>Parecer:</strong> {c.parecer}</div>}
+                    </div>
+                    <Pill tone={toneStatus[c.status]}>{labelStatus[c.status]}</Pill>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Dashboard({ db }) {
   const [filtroEscola, setFiltroEscola] = useState("todas");
   const [filtroModalidade, setFiltroModalidade] = useState("todas");
@@ -233,7 +343,7 @@ export function Pendencias({ db, setDb, usuario }) {
                 <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.primaryDark, textTransform: "uppercase", marginBottom: 8 }}>Previsto no cardápio</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {previstos.map((id) => (
-                    <ChipInsumo key={id} label={nomeInsumo(id)} tone={servidosSet.has(id) ? "match" : "falta"} />
+                    <ChipInsumo key={id} label={nomeInsumo(id)} tone={servidosSet.has(id) ? "match" : "falta"} af={db.insumos.find((i) => i.id === id)?.agriculturaFamiliar} />
                   ))}
                   {previstos.length === 0 && <span style={{ fontSize: 12.5, color: COLORS.inkSoft }}>Nenhum cardápio encontrado para esta combinação.</span>}
                 </div>
@@ -242,7 +352,7 @@ export function Pendencias({ db, setDb, usuario }) {
                 <div style={{ fontSize: 12, fontWeight: 800, color: "#8A5A0A", textTransform: "uppercase", marginBottom: 8 }}>Servido pela escola</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {l.itensServidos.map((id) => (
-                    <ChipInsumo key={id} label={nomeInsumo(id)} tone={previstosSet.has(id) ? "match" : "extra"} />
+                    <ChipInsumo key={id} label={nomeInsumo(id)} tone={previstosSet.has(id) ? "match" : "extra"} af={db.insumos.find((i) => i.id === id)?.agriculturaFamiliar} />
                   ))}
                 </div>
               </div>
@@ -518,37 +628,21 @@ export function Historico({ db }) {
   );
 }
 export function Cadastros({ db, setDb, usuario }) {
-  const [sub, setSub] = useState("insumos");
+  const [sub, setSub] = useState("modalidades");
   return (
     <div>
       <Tabs
         tabs={[
-          { key: "insumos", label: "Insumos" },
-          { key: "categorias", label: "Categorias" },
-          { key: "subcategorias", label: "Subcategorias" },
           { key: "modalidades", label: "Modalidades" },
           { key: "tiposRefeicao", label: "Tipos de refeição" },
           { key: "turnos", label: "Turnos" },
           { key: "escolas", label: "Escolas" },
           { key: "meses", label: "Meses" },
-          { key: "cardapios", label: "Cardápios" },
           { key: "usuarios", label: "Usuários" },
         ]}
         active={sub}
         onChange={setSub}
       />
-      {sub === "insumos" && <CadastroInsumos db={db} setDb={setDb} usuario={usuario} />}
-      {sub === "categorias" && (
-        <CadastroSimples
-          db={db}
-          setDb={setDb}
-          usuario={usuario}
-          chave="categorias"
-          titulo="Categoria"
-          campos={[{ key: "nome", label: "Nome da categoria" }]}
-        />
-      )}
-      {sub === "subcategorias" && <CadastroSubcategorias db={db} setDb={setDb} usuario={usuario} />}
       {sub === "modalidades" && (
         <CadastroSimples
           db={db}
@@ -596,7 +690,6 @@ export function Cadastros({ db, setDb, usuario }) {
           campos={[{ key: "valor", label: "Mês de referência", tipo: "month", mes: true }]}
         />
       )}
-      {sub === "cardapios" && <CadastroCardapios db={db} setDb={setDb} usuario={usuario} />}
       {sub === "usuarios" && <CadastroUsuarios db={db} setDb={setDb} usuario={usuario} />}
     </div>
   );
@@ -686,7 +779,7 @@ export function CadastroSubcategorias({ db, setDb, usuario }) {
 }
 
 export function CadastroInsumos({ db, setDb, usuario }) {
-  const vazio = { nome: "", categoriaId: "", subcategoriaId: "" };
+  const vazio = { nome: "", categoriaId: "", subcategoriaId: "", agriculturaFamiliar: false };
   const [form, setForm] = useState(vazio);
   const [editandoId, setEditandoId] = useState(null);
 
@@ -702,21 +795,21 @@ export function CadastroInsumos({ db, setDb, usuario }) {
     if (editandoId) {
       setDb((prev) => ({
         ...prev,
-        insumos: prev.insumos.map((i) => (i.id === editandoId ? { ...i, nome: form.nome, categoriaId: form.categoriaId || null, subcategoriaId: form.subcategoriaId || null } : i)),
+        insumos: prev.insumos.map((i) => (i.id === editandoId ? { ...i, nome: form.nome, categoriaId: form.categoriaId || null, subcategoriaId: form.subcategoriaId || null, agriculturaFamiliar: form.agriculturaFamiliar } : i)),
       }));
       registrarHistorico(setDb, usuario, `Editou o insumo: ${form.nome}.`);
       setEditandoId(null);
     } else {
-      const novo = { id: "ins" + Date.now(), nome: form.nome, categoriaId: form.categoriaId || null, subcategoriaId: form.subcategoriaId || null };
+      const novo = { id: "ins" + Date.now(), nome: form.nome, categoriaId: form.categoriaId || null, subcategoriaId: form.subcategoriaId || null, agriculturaFamiliar: form.agriculturaFamiliar };
       setDb((prev) => ({ ...prev, insumos: [...prev.insumos, novo] }));
-      registrarHistorico(setDb, usuario, `Cadastrou o insumo: ${form.nome}.`);
+      registrarHistorico(setDb, usuario, `Cadastrou o insumo: ${form.nome}${form.agriculturaFamiliar ? " (Agricultura Familiar)" : ""}.`);
     }
     setForm(vazio);
   }
 
   function editar(i) {
     setEditandoId(i.id);
-    setForm({ nome: i.nome, categoriaId: i.categoriaId || "", subcategoriaId: i.subcategoriaId || "" });
+    setForm({ nome: i.nome, categoriaId: i.categoriaId || "", subcategoriaId: i.subcategoriaId || "", agriculturaFamiliar: !!i.agriculturaFamiliar });
   }
 
   function excluir(i) {
@@ -744,6 +837,16 @@ export function CadastroInsumos({ db, setDb, usuario }) {
             {subcategoriasFiltradas.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
           </select>
         </Field>
+        <label
+          style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10,
+            border: `1.5px solid ${form.agriculturaFamiliar ? COLORS.agro : COLORS.line}`,
+            background: form.agriculturaFamiliar ? COLORS.agroSoft : "#fff", cursor: "pointer", marginBottom: 14,
+          }}
+        >
+          <input type="checkbox" checked={form.agriculturaFamiliar} onChange={(e) => setForm({ ...form, agriculturaFamiliar: e.target.checked })} />
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: form.agriculturaFamiliar ? COLORS.agro : COLORS.ink }}>Insumo da Agricultura Familiar</span>
+        </label>
         <div style={{ display: "flex", gap: 10 }}>
           <Btn onClick={salvar}>{editandoId ? "Salvar alterações" : "Cadastrar"}</Btn>
           {editandoId && <Btn variant="ghost" onClick={() => { setEditandoId(null); setForm(vazio); }}>Cancelar</Btn>}
@@ -751,11 +854,15 @@ export function CadastroInsumos({ db, setDb, usuario }) {
       </Card>
       <Card>
         <h3 style={{ marginTop: 0, fontSize: 15.5, fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark }}>Insumos cadastrados</h3>
+        <div style={{ fontSize: 12, color: COLORS.agro, fontWeight: 700, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: COLORS.agro, display: "inline-block" }} /> Agricultura Familiar
+        </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
           <tbody>
             {db.insumos.map((i) => (
-              <tr key={i.id} style={{ borderTop: `1px solid ${COLORS.line}` }}>
+              <tr key={i.id} style={{ borderTop: `1px solid ${COLORS.line}`, background: i.agriculturaFamiliar ? COLORS.agroSoft : "transparent" }}>
                 <td style={{ padding: 8 }}>
+                  {i.agriculturaFamiliar && <span style={{ color: COLORS.agro, fontWeight: 800, marginRight: 4 }}>●</span>}
                   {i.nome}
                   {(i.categoriaId || i.subcategoriaId) && (
                     <span style={{ color: COLORS.inkSoft }}>
@@ -987,6 +1094,7 @@ export function CadastroUsuarios({ db, setDb, usuario }) {
           <select style={inputStyle} value={form.nivelAcesso} onChange={(e) => setForm({ ...form, nivelAcesso: e.target.value })}>
             <option value="escola">Escola</option>
             <option value="nutricionista">Nutricionista / Administrador</option>
+            <option value="empresa">Empresa Fornecedora</option>
           </select>
         </Field>
         {form.nivelAcesso === "escola" && (
@@ -1010,7 +1118,7 @@ export function CadastroUsuarios({ db, setDb, usuario }) {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13.5 }}>{u.nomeCompleto}</div>
                   <div style={{ fontSize: 12, color: COLORS.inkSoft }}>
-                    {u.cargo} · login: {u.login} · {u.nivelAcesso === "nutricionista" ? "Nutricionista/Administrador" : u.nivelAcesso === "admin" ? "Administrador Geral" : `Escola — ${nomeEscola(u.escolaId)}`}
+                    {u.cargo} · login: {u.login} · {u.nivelAcesso === "nutricionista" ? "Nutricionista/Administrador" : u.nivelAcesso === "admin" ? "Administrador Geral" : u.nivelAcesso === "empresa" ? "Empresa Fornecedora" : `Escola — ${nomeEscola(u.escolaId)}`}
                   </div>
                   {(u.localTrabalho || u.telefone) && (
                     <div style={{ fontSize: 12, color: COLORS.inkSoft }}>
@@ -1026,280 +1134,6 @@ export function CadastroUsuarios({ db, setDb, usuario }) {
               </div>
             </div>
           ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
-export function CadastroCardapios({ db, setDb, usuario }) {
-  const [modalidadeId, setModalidadeId] = useState("");
-  const [tipoRefeicaoId, setTipoRefeicaoId] = useState("");
-  const [turnoId, setTurnoId] = useState("");
-  const [escolaIds, setEscolaIds] = useState([]);
-  const [mesReferencia, setMesReferencia] = useState("");
-  const [dataReferencia, setDataReferencia] = useState("");
-  const [diaSemana, setDiaSemana] = useState("Segunda");
-  const [descricao, setDescricao] = useState("");
-  const [itens, setItens] = useState([]);
-  const [buscaEscola, setBuscaEscola] = useState("");
-  const [buscaInsumo, setBuscaInsumo] = useState("");
-
-  const [filtroEscola, setFiltroEscola] = useState("todas");
-  const [filtroModalidade, setFiltroModalidade] = useState("todas");
-  const [filtroMes, setFiltroMes] = useState("todos");
-
-  const [mesOrigem, setMesOrigem] = useState("");
-  const [mesDestino, setMesDestino] = useState("");
-
-  function toggle(id) {
-    setItens((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  }
-  function toggleEscola(id) {
-    setEscolaIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  }
-
-  function handleDataReferencia(valor) {
-    setDataReferencia(valor);
-    if (valor) {
-      setDiaSemana(diaSemanaDe(valor));
-      const mesDaData = mesReferenciaDe(valor);
-      if (db.meses.some((m) => m.valor === mesDaData)) setMesReferencia(mesDaData);
-    }
-  }
-
-  function handleDiaSemana(valor) {
-    if (dataReferencia && diaSemanaDe(dataReferencia) !== valor) {
-      alert(`A data selecionada (${fmtData(dataReferencia)}) cai numa ${diaSemanaDe(dataReferencia)}, não numa ${valor}. A data foi removida — se quiser vincular uma data específica, selecione-a novamente.`);
-      setDataReferencia("");
-    }
-    setDiaSemana(valor);
-  }
-
-  function salvar() {
-    if (!turnoId || !modalidadeId || !tipoRefeicaoId) {
-      alert("Selecione turno, modalidade e tipo de refeição.");
-      return;
-    }
-    if (escolaIds.length === 0) {
-      alert("Selecione ao menos uma escola.");
-      return;
-    }
-    if (!mesReferencia) {
-      alert("Selecione o mês de referência do cardápio.");
-      return;
-    }
-    if (dataReferencia && diaSemanaDe(dataReferencia) !== diaSemana) {
-      alert(`A data (${fmtData(dataReferencia)}) não corresponde ao dia da semana selecionado (${diaSemana}). Corrija antes de salvar.`);
-      return;
-    }
-    if (!descricao || itens.length === 0) {
-      alert("Informe a descrição e selecione ao menos um insumo.");
-      return;
-    }
-    const novo = {
-      id: "c" + Date.now(),
-      modalidadeId,
-      tipoRefeicaoId,
-      turnoId,
-      escolaIds,
-      mesReferencia,
-      dataReferencia,
-      diaSemana,
-      descricao: descricao.toUpperCase(),
-      itens,
-    };
-    setDb((prev) => ({ ...prev, cardapios: [...prev.cardapios, novo] }));
-    registrarHistorico(setDb, usuario, `Cadastrou o cardápio "${novo.descricao}" (${fmtMes(mesReferencia)}, toda ${diaSemana}).`);
-    notificar(setDb, escolaIds, `Novo cardápio cadastrado para sua escola: ${novo.descricao} (${fmtMes(mesReferencia)}).`);
-    setDescricao("");
-    setItens([]);
-    setEscolaIds([]);
-    setDataReferencia("");
-  }
-
-  function excluir(c) {
-    if (!window.confirm(`Excluir o cardápio "${c.descricao}"?`)) return;
-    setDb((prev) => ({ ...prev, cardapios: prev.cardapios.filter((x) => x.id !== c.id) }));
-    registrarHistorico(setDb, usuario, `Excluiu o cardápio "${c.descricao}" (${fmtMes(c.mesReferencia)}).`);
-  }
-
-  function duplicarMes() {
-    if (!mesOrigem || !mesDestino) {
-      alert("Selecione o mês de origem e o mês de destino.");
-      return;
-    }
-    if (mesOrigem === mesDestino) {
-      alert("Escolha meses diferentes para origem e destino.");
-      return;
-    }
-    const origem = db.cardapios.filter((c) => c.mesReferencia === mesOrigem);
-    if (origem.length === 0) {
-      alert(`Não há cardápios cadastrados em ${fmtMes(mesOrigem)}.`);
-      return;
-    }
-    const ok = window.confirm(`Duplicar ${origem.length} cardápio(s) de ${fmtMes(mesOrigem)} para ${fmtMes(mesDestino)}?`);
-    if (!ok) return;
-    const copias = origem.map((c, i) => ({ ...c, id: "c" + Date.now() + i, mesReferencia: mesDestino, dataReferencia: "" }));
-    setDb((prev) => ({ ...prev, cardapios: [...prev.cardapios, ...copias] }));
-    registrarHistorico(setDb, usuario, `Duplicou ${origem.length} cardápio(s) de ${fmtMes(mesOrigem)} para ${fmtMes(mesDestino)}.`);
-    setMesOrigem("");
-    setMesDestino("");
-  }
-
-  const nomeModalidade = (id) => db.modalidades.find((m) => m.id === id)?.nome || id;
-  const nomeTipoRefeicao = (id) => db.tiposRefeicao.find((r) => r.id === id)?.nome || id;
-  const nomeTurno = (id) => db.turnos.find((t) => t.id === id)?.nome || id;
-  const nomeEscola = (id) => db.escolas.find((e) => e.id === id)?.nome || id;
-  const nomeInsumo = (id) => db.insumos.find((i) => i.id === id)?.nome || id;
-
-  const escolasFiltradas = db.escolas.filter((e) => e.nome.toLowerCase().includes(buscaEscola.toLowerCase()));
-  const insumosFiltrados = db.insumos.filter((i) => i.nome.toLowerCase().includes(buscaInsumo.toLowerCase()));
-
-  const mesesDisponiveis = useMemo(() => {
-    const set = new Set(db.cardapios.map((c) => c.mesReferencia));
-    return Array.from(set).sort();
-  }, [db.cardapios]);
-
-  const listaFiltrada = db.cardapios.filter((c) => {
-    if (filtroEscola !== "todas" && !(c.escolaIds || []).includes(filtroEscola)) return false;
-    if (filtroModalidade !== "todas" && c.modalidadeId !== filtroModalidade) return false;
-    if (filtroMes !== "todos" && c.mesReferencia !== filtroMes) return false;
-    return true;
-  });
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <Card>
-        <h3 style={{ marginTop: 0, fontSize: 15.5, fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark }}>Novo cardápio</h3>
-
-        <div className="form-fields-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <Field label="Mês de referência" hint={db.meses.length === 0 ? "Cadastre um mês na aba \"Meses\" primeiro." : undefined}>
-            <select style={inputStyle} value={mesReferencia} onChange={(e) => setMesReferencia(e.target.value)}>
-              <option value="" disabled>Selecione</option>
-              {db.meses.map((m) => <option key={m.id} value={m.valor}>{fmtMes(m.valor)}</option>)}
-            </select>
-          </Field>
-          <Field label="Data" hint="Opcional — ao escolher, o dia da semana é preenchido automaticamente.">
-            <input type="date" style={inputStyle} value={dataReferencia} onChange={(e) => handleDataReferencia(e.target.value)} />
-          </Field>
-          <Field label="Dia da semana">
-            <select style={inputStyle} value={diaSemana} onChange={(e) => handleDiaSemana(e.target.value)}>
-              {DIAS_SEMANA.map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </Field>
-          <Field label="Turno">
-            <select style={inputStyle} value={turnoId} onChange={(e) => setTurnoId(e.target.value)}>
-              <option value="" disabled>Selecione</option>
-              {db.turnos.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-            </select>
-          </Field>
-          <Field label="Modalidade">
-            <select style={inputStyle} value={modalidadeId} onChange={(e) => setModalidadeId(e.target.value)}>
-              <option value="" disabled>Selecione</option>
-              {db.modalidades.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-            </select>
-          </Field>
-          <Field label="Tipo de refeição">
-            <select style={inputStyle} value={tipoRefeicaoId} onChange={(e) => setTipoRefeicaoId(e.target.value)}>
-              <option value="" disabled>Selecione</option>
-              {db.tiposRefeicao.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
-            </select>
-          </Field>
-          <Field label="Descrição">
-            <input style={inputStyle} value={descricao} onChange={(e) => setDescricao(e.target.value.toUpperCase())} placeholder="Ex: CARDÁPIO DE SEGUNDA — FUNDAMENTAL I" />
-          </Field>
-        </div>
-
-        <Field label="Escolas vinculadas a este cardápio" hint="Selecione uma ou mais escolas que seguirão este cardápio.">
-          <input
-            style={{ ...inputStyle, marginBottom: 10 }}
-            value={buscaEscola}
-            onChange={(e) => setBuscaEscola(e.target.value)}
-            placeholder="Pesquisar escola por nome..."
-          />
-          <ItemChecklist insumos={escolasFiltradas} selecionados={escolaIds} onToggle={toggleEscola} />
-          {escolasFiltradas.length === 0 && <div style={{ fontSize: 13, color: COLORS.inkSoft, marginTop: 6 }}>Nenhuma escola encontrada.</div>}
-        </Field>
-
-        <Field label="Insumos do cardápio">
-          <input
-            style={{ ...inputStyle, marginBottom: 10 }}
-            value={buscaInsumo}
-            onChange={(e) => setBuscaInsumo(e.target.value)}
-            placeholder="Pesquisar insumo por nome..."
-          />
-          <ItemChecklist insumos={insumosFiltrados} selecionados={itens} onToggle={toggle} />
-          {insumosFiltrados.length === 0 && <div style={{ fontSize: 13, color: COLORS.inkSoft, marginTop: 6 }}>Nenhum insumo encontrado.</div>}
-        </Field>
-
-        <Btn onClick={salvar}>Cadastrar cardápio</Btn>
-      </Card>
-
-      <Card>
-        <h3 style={{ marginTop: 0, fontSize: 15.5, fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark }}>Duplicar cardápios de um mês para outro</h3>
-        <div style={{ fontSize: 13, color: COLORS.inkSoft, marginBottom: 14 }}>
-          Evita recadastrar tudo todo mês: copia todos os cardápios de um mês de referência para outro.
-        </div>
-        <div className="form-fields-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <Field label="Mês de origem">
-            <select style={inputStyle} value={mesOrigem} onChange={(e) => setMesOrigem(e.target.value)}>
-              <option value="">Selecione</option>
-              {mesesDisponiveis.map((m) => <option key={m} value={m}>{fmtMes(m)}</option>)}
-            </select>
-          </Field>
-          <Field label="Mês de destino">
-            <select style={inputStyle} value={mesDestino} onChange={(e) => setMesDestino(e.target.value)}>
-              <option value="">Selecione</option>
-              {db.meses.map((m) => <option key={m.id} value={m.valor}>{fmtMes(m.valor)}</option>)}
-            </select>
-          </Field>
-        </div>
-        <Btn variant="secondary" onClick={duplicarMes}>Duplicar cardápios</Btn>
-      </Card>
-
-      <Card>
-        <h3 style={{ marginTop: 0, fontSize: 15.5, fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark }}>Cardápios cadastrados</h3>
-
-        <div className="filtro-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
-          <Field label="Filtrar por escola">
-            <select style={inputStyle} value={filtroEscola} onChange={(e) => setFiltroEscola(e.target.value)}>
-              <option value="todas">Todas</option>
-              {db.escolas.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}
-            </select>
-          </Field>
-          <Field label="Filtrar por modalidade">
-            <select style={inputStyle} value={filtroModalidade} onChange={(e) => setFiltroModalidade(e.target.value)}>
-              <option value="todas">Todas</option>
-              {db.modalidades.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-            </select>
-          </Field>
-          <Field label="Filtrar por mês">
-            <select style={inputStyle} value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)}>
-              <option value="todos">Todos</option>
-              {mesesDisponiveis.map((m) => <option key={m} value={m}>{fmtMes(m)}</option>)}
-            </select>
-          </Field>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {listaFiltrada.map((c) => (
-            <div key={c.id} style={{ border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 700, fontSize: 13.5 }}>{c.descricao}</div>
-                <Btn small variant="danger" onClick={() => excluir(c)}>Excluir</Btn>
-              </div>
-              <div style={{ fontSize: 12.5, color: COLORS.inkSoft, margin: "4px 0" }}>
-                {fmtMes(c.mesReferencia)} · toda {c.diaSemana}{c.dataReferencia ? ` (ref. ${fmtData(c.dataReferencia)})` : ""} · {nomeTurno(c.turnoId)} · {nomeModalidade(c.modalidadeId)} · {nomeTipoRefeicao(c.tipoRefeicaoId)}
-              </div>
-              <div style={{ fontSize: 12.5, color: COLORS.inkSoft, marginBottom: 4 }}>
-                <strong>Escolas:</strong> {(c.escolaIds || []).map(nomeEscola).join(", ")}
-              </div>
-              <div style={{ fontSize: 13 }}>{c.itens.map(nomeInsumo).join(", ")}</div>
-            </div>
-          ))}
-          {listaFiltrada.length === 0 && (
-            <div style={{ color: COLORS.inkSoft, fontSize: 13.5, padding: 12, textAlign: "center" }}>Nenhum cardápio encontrado com esse filtro.</div>
-          )}
         </div>
       </Card>
     </div>
@@ -2058,6 +1892,7 @@ export function NutricionistaContent({ tab, db, setDb, usuario }) {
   return (
     <div>
       {tab === "dashboard" && <Dashboard db={db} />}
+      {tab === "aprovacaoCardapios" && <AprovacaoCardapios db={db} setDb={setDb} usuario={usuario} />}
       {tab === "pendencias" && <Pendencias db={db} setDb={setDb} usuario={usuario} />}
       {tab === "cadastros" && <Cadastros db={db} setDb={setDb} usuario={usuario} />}
       {tab === "relatorios" && <Relatorios db={db} />}

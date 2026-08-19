@@ -20,6 +20,7 @@ export function Pill({ tone = "neutral", children }) {
     good: { bg: COLORS.goodSoft, fg: COLORS.good },
     warn: { bg: COLORS.warnSoft, fg: COLORS.warn },
     gold: { bg: "#F3EBD3", fg: COLORS.gold },
+    info: { bg: "#DCEAF2", fg: "#2D6E8F" },
   };
   const t = tones[tone];
   return (
@@ -160,6 +161,9 @@ export function ItemChecklist({ insumos, selecionados, onToggle }) {
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
       {insumos.map((ins) => {
         const marcado = selecionados.includes(ins.id);
+        const af = !!ins.agriculturaFamiliar;
+        const corBorda = marcado ? (af ? COLORS.agro : COLORS.primary) : (af ? COLORS.agro : COLORS.line);
+        const corFundo = marcado ? (af ? COLORS.agroSoft : COLORS.primarySoft) : (af ? COLORS.agroSoft : "#fff");
         return (
           <label
             key={ins.id}
@@ -169,21 +173,23 @@ export function ItemChecklist({ insumos, selecionados, onToggle }) {
               gap: 8,
               padding: "9px 14px",
               borderRadius: 10,
-              border: `1.5px solid ${marcado ? COLORS.primary : COLORS.line}`,
-              background: marcado ? COLORS.primarySoft : "#fff",
+              border: `1.5px solid ${corBorda}`,
+              background: corFundo,
               cursor: "pointer",
               fontSize: 14,
             }}
+            title={af ? "Insumo da Agricultura Familiar" : undefined}
           >
             <input type="checkbox" checked={marcado} onChange={() => onToggle(ins.id)} />
             {ins.nome}
+            {af && <span style={{ fontSize: 11, fontWeight: 800, color: COLORS.agro, background: "#fff", borderRadius: 999, padding: "1px 6px", border: `1px solid ${COLORS.agro}` }}>AF</span>}
           </label>
         );
       })}
     </div>
   );
 }
-export function ChipInsumo({ label, tone, upper }) {
+export function ChipInsumo({ label, tone, upper, af }) {
   const tones = {
     match: { bg: COLORS.goodSoft, fg: COLORS.good, border: COLORS.good, prefixo: "✓" },
     falta: { bg: COLORS.warnSoft, fg: COLORS.warn, border: COLORS.warn, prefixo: "✗" },
@@ -199,6 +205,7 @@ export function ChipInsumo({ label, tone, upper }) {
       }}
     >
       <span style={{ fontWeight: 800 }}>{t.prefixo}</span> {label}
+      {af && <span style={{ fontSize: 10, fontWeight: 800, color: COLORS.agro, background: "#fff", borderRadius: 999, padding: "1px 5px", border: `1px solid ${COLORS.agro}` }}>AF</span>}
     </span>
   );
 }

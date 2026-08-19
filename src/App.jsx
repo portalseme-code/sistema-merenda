@@ -2,17 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { COLORS, FONT_BODY } from './theme.js';
 import { SEED } from './mockData.js';
 import { carregarDb, salvarDb } from './api.js';
-import { AppShell, NAV_NUTRICIONISTA, NAV_ESCOLA, NAV_ADMIN, AppStyles } from './components/AppShell.jsx';
+import { AppShell, NAV_NUTRICIONISTA, NAV_ESCOLA, NAV_ADMIN, NAV_EMPRESA, AppStyles } from './components/AppShell.jsx';
 import { TelaLogin } from './components/TelaLogin.jsx';
 import { NutricionistaContent } from './components/NutricionistaApp.jsx';
 import { EscolaContent } from './components/EscolaApp.jsx';
 import { AdminContent } from './components/AdminApp.jsx';
+import { EmpresaContent } from './components/EmpresaApp.jsx';
 
 const CHAVE_SESSAO = 'sigae_sessao_usuario_id';
 const CHAVE_ABA = 'sigae_sessao_aba';
 
 function tabInicial(usuario) {
-  return usuario.nivelAcesso === "nutricionista" ? "dashboard" : usuario.nivelAcesso === "admin" ? "solicitacoes" : "novo";
+  if (usuario.nivelAcesso === "nutricionista") return "dashboard";
+  if (usuario.nivelAcesso === "admin") return "solicitacoes";
+  if (usuario.nivelAcesso === "empresa") return "cardapios";
+  return "novo";
 }
 
 export default function App() {
@@ -111,7 +115,7 @@ export default function App() {
 
   const acesso = usuarioLogado.nivelAcesso;
   const escolaLogada = usuarioLogado.escolaId;
-  const navItems = acesso === "nutricionista" ? NAV_NUTRICIONISTA : acesso === "admin" ? NAV_ADMIN : NAV_ESCOLA;
+  const navItems = acesso === "nutricionista" ? NAV_NUTRICIONISTA : acesso === "admin" ? NAV_ADMIN : acesso === "empresa" ? NAV_EMPRESA : NAV_ESCOLA;
 
   return (
     <div style={{ minHeight: "100vh", background: COLORS.bg, fontFamily: FONT_BODY }}>
@@ -132,6 +136,9 @@ export default function App() {
         )}
         {acesso === "admin" && (
           <AdminContent tab={tab} db={db} setDb={setDb} usuario={usuarioLogado} />
+        )}
+        {acesso === "empresa" && (
+          <EmpresaContent tab={tab} db={db} setDb={setDb} usuario={usuarioLogado} />
         )}
         {acesso === "escola" && (
           <EscolaContent tab={tab} onNavigate={navegar} db={db} setDb={setDb} escolaId={escolaLogada} usuario={usuarioLogado} />

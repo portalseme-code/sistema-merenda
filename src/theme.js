@@ -15,6 +15,8 @@ export const COLORS = {
   warn: "#C1450F",      // páprica, para divergências/alertas
   warnSoft: "#FBE4D8",
   gold: "#AD8A2E",
+  agro: "#6E4FA3",       // roxo — insumo da Agricultura Familiar
+  agroSoft: "#EFE7F8",
 };
 export const FONT_DISPLAY = "'Poppins', 'Segoe UI', system-ui, sans-serif";
 export const FONT_BODY = "'Poppins', 'Segoe UI', system-ui, sans-serif";
