@@ -1,14 +1,12 @@
 import { useState, useMemo } from 'react';
 import { COLORS, FONT_DISPLAY, CHART_PALETTE, DIAS_SEMANA } from '../theme.js';
 import { Card, SectionTitle, Field, inputStyle, Btn, Pill, Tabs, ItemChecklist, BarChartH, DonutChart, ChipInsumo, InfoBadge } from './ui.jsx';
-import { fmtData, fmtMoeda, fmtMes, fmtDataHora, mesReferenciaDe, diaSemanaDe, agora, buscarCardapioVigente, compararCardapio, gerarSnapshotMes, registrarHistorico, notificar, exportarCSV, gerarLoginUsuario, gerarSenhaAleatoria } from '../utils.js';
-
+import { fmtData, fmtMoeda, fmtMes, fmtDataHora, mesReferenciaDe, diaSemanaDe, mesAtualISO, agora, buscarCardapioVigente, compararCardapio, gerarSnapshotMes, registrarHistorico, notificar, exportarCSV, gerarLoginUsuario, gerarSenhaAleatoria } from '../utils.js';
 function CartaoCardapioAprovacao({ c, db, setDb, usuario }) {
   const [parecer, setParecer] = useState("");
   const nomeModalidade = (id) => db.modalidades.find((m) => m.id === id)?.nome || id;
-  const nomeTipoRefeicao = (id) => db.tiposRefeicao.find((r) => r.id === id)?.nome || id;
+  const nomeTipoRefeicao = (id) => (db.tiposRefeicaoCardapio || []).find((r) => r.id === id)?.nome || id;
   const nomeTurno = (id) => db.turnos.find((t) => t.id === id)?.nome || id;
-  const nomeEscola = (id) => db.escolas.find((e) => e.id === id)?.nome || id;
   const insumo = (id) => db.insumos.find((i) => i.id === id);
 
   function decidir(novoStatus) {
@@ -24,7 +22,7 @@ function CartaoCardapioAprovacao({ c, db, setDb, usuario }) {
     }));
     registrarHistorico(setDb, usuario, `${novoStatus === "Aprovado" ? "Aprovou" : novoStatus === "Reprovado" ? "Reprovou" : "Solicitou alterações no"} cardápio "${c.descricao}".`);
     if (novoStatus === "Aprovado") {
-      notificar(setDb, c.escolaIds || [], `Cardápio aprovado e disponível: ${c.descricao} (${fmtMes(c.mesReferencia)}).`);
+      notificar(setDb, "todas_escolas", `Cardápio aprovado e disponível: ${c.descricao} (${fmtMes(c.mesReferencia)}).`);
     }
   }
 
@@ -35,9 +33,6 @@ function CartaoCardapioAprovacao({ c, db, setDb, usuario }) {
           <div style={{ fontWeight: 800, fontSize: 15 }}>{c.descricao}</div>
           <div style={{ fontSize: 13, color: COLORS.inkSoft }}>
             {fmtMes(c.mesReferencia)} · toda {c.diaSemana} · {nomeTurno(c.turnoId)} · {nomeModalidade(c.modalidadeId)} · {nomeTipoRefeicao(c.tipoRefeicaoId)}
-          </div>
-          <div style={{ fontSize: 12.5, color: COLORS.inkSoft, marginTop: 2 }}>
-            Escolas: {(c.escolaIds || []).map(nomeEscola).join(", ") || "—"}
           </div>
         </div>
         <Pill tone="info">Aguardando análise</Pill>
@@ -64,24 +59,99 @@ function CartaoCardapioAprovacao({ c, db, setDb, usuario }) {
   );
 }
 
+function construirDiasDoCalendario(mesReferencia) {
+  const [ano, mes] = mesReferencia.split("-").map(Number);
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  const offset = new Date(ano, mes - 1, 1).getDay();
+  const dias = [];
+  for (let i = 0; i < offset; i++) dias.push(null);
+  for (let d = 1; d <= ultimoDia; d++) {
+    dias.push({ dia: d, diaSemana: DIAS_SEMANA[new Date(ano, mes - 1, d).getDay()] });
+  }
+  return dias;
+}
+
 export function AprovacaoCardapios({ db, setDb, usuario }) {
   const [mostrarDecididos, setMostrarDecididos] = useState(false);
   const pendentes = db.cardapios.filter((c) => c.status === "Enviado");
   const decididos = db.cardapios.filter((c) => c.status === "Aprovado" || c.status === "Reprovado" || c.status === "AlteracoesSolicitadas");
   const nomeModalidade = (id) => db.modalidades.find((m) => m.id === id)?.nome || id;
-  const nomeTipoRefeicao = (id) => db.tiposRefeicao.find((r) => r.id === id)?.nome || id;
+  const nomeTipoRefeicao = (id) => (db.tiposRefeicaoCardapio || []).find((r) => r.id === id)?.nome || id;
 
   const toneStatus = { Aprovado: "good", Reprovado: "warn", AlteracoesSolicitadas: "gold" };
   const labelStatus = { Aprovado: "Aprovado", Reprovado: "Reprovado", AlteracoesSolicitadas: "Alterações solicitadas" };
 
+  const mesesDisponiveis = [...new Set([...pendentes.map((c) => c.mesReferencia), ...db.meses.map((m) => m.valor)])].sort();
+  const [mesSelecionado, setMesSelecionado] = useState(mesesDisponiveis[0] || mesAtualISO());
+  const [diaSemanaSelecionado, setDiaSemanaSelecionado] = useState(null);
+
+  const mesParaExibir = mesesDisponiveis.includes(mesSelecionado) ? mesSelecionado : (mesesDisponiveis[0] || mesAtualISO());
+  const diasDoCalendario = construirDiasDoCalendario(mesParaExibir);
+
+  function pendentesDoDia(diaSemana) {
+    return pendentes.filter((c) => c.mesReferencia === mesParaExibir && c.diaSemana === diaSemana);
+  }
+
   return (
     <div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {pendentes.length === 0 && (
-          <Card><div style={{ color: COLORS.inkSoft }}>Nenhum cardápio aguardando análise no momento.</div></Card>
+      {mesesDisponiveis.length > 0 && (
+        <Card style={{ marginBottom: 16, maxWidth: 280 }}>
+          <Field label="Mês">
+            <select style={inputStyle} value={mesParaExibir} onChange={(e) => { setMesSelecionado(e.target.value); setDiaSemanaSelecionado(null); }}>
+              {mesesDisponiveis.map((m) => <option key={m} value={m}>{fmtMes(m)}</option>)}
+            </select>
+          </Field>
+        </Card>
+      )}
+
+      <Card style={{ marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, marginBottom: 8 }}>
+          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+            <div key={d} style={{ textAlign: "center", fontWeight: 800, fontSize: 11, color: COLORS.inkSoft, textTransform: "uppercase" }}>{d}</div>
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+          {diasDoCalendario.map((d, i) => {
+            if (!d) return <div key={i} />;
+            const pend = pendentesDoDia(d.diaSemana);
+            const selecionado = diaSemanaSelecionado === d.diaSemana;
+            return (
+              <button
+                key={i}
+                onClick={() => pend.length > 0 && setDiaSemanaSelecionado(selecionado ? null : d.diaSemana)}
+                style={{
+                  aspectRatio: "1", borderRadius: 10, minHeight: 46,
+                  border: `1.5px solid ${selecionado ? COLORS.primary : pend.length > 0 ? COLORS.accent : COLORS.line}`,
+                  background: selecionado ? COLORS.primarySoft : pend.length > 0 ? COLORS.accentSoft : "#fff",
+                  cursor: pend.length > 0 ? "pointer" : "default",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, fontFamily: "inherit",
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.ink }}>{d.dia}</span>
+                {pend.length > 0 && (
+                  <span style={{ fontSize: 9.5, fontWeight: 800, color: "#8A5A0A" }}>{pend.length} pend.</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {pendentes.filter((c) => c.mesReferencia === mesParaExibir).length === 0 && (
+          <div style={{ color: COLORS.inkSoft, fontSize: 13.5, marginTop: 14 }}>Nenhum cardápio aguardando análise neste mês.</div>
         )}
-        {pendentes.map((c) => <CartaoCardapioAprovacao key={c.id} c={c} db={db} setDb={setDb} usuario={usuario} />)}
-      </div>
+      </Card>
+
+      {diaSemanaSelecionado && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, color: COLORS.primaryDark, fontSize: 16 }}>
+            Cardápios de {diaSemanaSelecionado} — {fmtMes(mesParaExibir)}
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {pendentesDoDia(diaSemanaSelecionado).map((c) => (
+              <CartaoCardapioAprovacao key={c.id} c={c} db={db} setDb={setDb} usuario={usuario} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {decididos.length > 0 && (
         <div style={{ marginTop: 24 }}>
@@ -255,11 +325,10 @@ export function Pendencias({ db, setDb, usuario }) {
 
   function corrigirTipoRefeicao(l, novoTipoRefeicaoId) {
     if (novoTipoRefeicaoId === l.tipoRefeicaoId) return;
-    const cardapioNovo = buscarCardapioVigente(db.cardapios, {
+    const cardapioNovo = buscarCardapioVigente(db, {
       modalidadeId: l.modalidadeId,
       tipoRefeicaoId: novoTipoRefeicaoId,
       turnoId: l.turnoId,
-      escolaId: l.escolaId,
       data: l.data,
     });
     const previstosNovo = cardapioNovo ? cardapioNovo.itens : [];
@@ -291,11 +360,10 @@ export function Pendencias({ db, setDb, usuario }) {
         <Card><div style={{ color: COLORS.inkSoft }}>Nenhum lançamento aguardando validação.</div></Card>
       )}
       {pendentes.map((l) => {
-        const cardapio = buscarCardapioVigente(db.cardapios, {
+        const cardapio = buscarCardapioVigente(db, {
           modalidadeId: l.modalidadeId,
           tipoRefeicaoId: l.tipoRefeicaoId,
           turnoId: l.turnoId,
-          escolaId: l.escolaId,
           data: l.data,
         });
         const previstos = cardapio ? cardapio.itens : [];

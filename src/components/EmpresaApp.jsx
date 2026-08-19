@@ -28,24 +28,22 @@ export function CadastroCardapiosEmpresa({ db, setDb, usuario }) {
   const [modalidadeId, setModalidadeId] = useState("");
   const [tipoRefeicaoId, setTipoRefeicaoId] = useState("");
   const [turnoId, setTurnoId] = useState("");
-  const [escolaIds, setEscolaIds] = useState([]);
   const [mesReferencia, setMesReferencia] = useState("");
   const [dataReferencia, setDataReferencia] = useState("");
   const [diaSemana, setDiaSemana] = useState("Segunda");
-  const [descricao, setDescricao] = useState("");
   const [itens, setItens] = useState([]);
-  const [buscaEscola, setBuscaEscola] = useState("");
   const [buscaInsumo, setBuscaInsumo] = useState("");
 
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [filtroTipoRefeicao, setFiltroTipoRefeicao] = useState("todos");
   const [filtroMes, setFiltroMes] = useState("todos");
 
+  const nomeModalidade = (id) => db.modalidades.find((m) => m.id === id)?.nome || id;
+  const nomeTipoRefeicao = (id) => (db.tiposRefeicaoCardapio || []).find((r) => r.id === id)?.nome || id;
+  const nomeTurno = (id) => db.turnos.find((t) => t.id === id)?.nome || id;
+
   function toggle(id) {
     setItens((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  }
-  function toggleEscola(id) {
-    setEscolaIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   function handleDataReferencia(valor) {
@@ -67,37 +65,37 @@ export function CadastroCardapiosEmpresa({ db, setDb, usuario }) {
 
   function limpar() {
     setEditandoId(null);
-    setModalidadeId(""); setTipoRefeicaoId(""); setTurnoId(""); setEscolaIds([]);
+    setModalidadeId(""); setTipoRefeicaoId(""); setTurnoId("");
     setMesReferencia(""); setDataReferencia(""); setDiaSemana("Segunda");
-    setDescricao(""); setItens([]);
+    setItens([]);
   }
 
   function validar() {
-    if (!turnoId || !modalidadeId || !tipoRefeicaoId) { alert("Selecione turno, modalidade e tipo de refeição."); return false; }
-    if (escolaIds.length === 0) { alert("Selecione ao menos uma escola."); return false; }
+    if (!turnoId || !modalidadeId || !tipoRefeicaoId) { alert("Selecione tipo de cardápio, modalidade e tipo de refeição."); return false; }
     if (!mesReferencia) { alert("Selecione o mês de referência do cardápio."); return false; }
     if (dataReferencia && diaSemanaDe(dataReferencia) !== diaSemana) { alert("A data não corresponde ao dia da semana selecionado."); return false; }
-    if (!descricao || itens.length === 0) { alert("Informe a descrição e selecione ao menos um insumo."); return false; }
+    if (itens.length === 0) { alert("Selecione ao menos um insumo."); return false; }
     return true;
+  }
+
+  function montarDados() {
+    return {
+      modalidadeId, tipoRefeicaoId, turnoId, mesReferencia, dataReferencia, diaSemana, itens,
+      descricao: nomeModalidade(modalidadeId).toUpperCase(),
+    };
   }
 
   function salvarRascunho() {
     if (!validar()) return;
+    const dados = montarDados();
     if (editandoId) {
       setDb((prev) => ({
         ...prev,
-        cardapios: prev.cardapios.map((c) =>
-          c.id === editandoId
-            ? { ...c, modalidadeId, tipoRefeicaoId, turnoId, escolaIds, mesReferencia, dataReferencia, diaSemana, descricao: descricao.toUpperCase(), itens, status: "Rascunho" }
-            : c
-        ),
+        cardapios: prev.cardapios.map((c) => (c.id === editandoId ? { ...c, ...dados, status: "Rascunho" } : c)),
       }));
-      registrarHistorico(setDb, usuario, `A empresa atualizou o rascunho do cardápio "${descricao.toUpperCase()}".`);
+      registrarHistorico(setDb, usuario, `A empresa atualizou o rascunho do cardápio "${dados.descricao}".`);
     } else {
-      const novo = {
-        id: "c" + Date.now(), modalidadeId, tipoRefeicaoId, turnoId, escolaIds, mesReferencia, dataReferencia, diaSemana,
-        descricao: descricao.toUpperCase(), itens, status: "Rascunho", parecer: "", criadoPor: usuario ? usuario.nomeCompleto : "",
-      };
+      const novo = { id: "c" + Date.now(), ...dados, status: "Rascunho", parecer: "", criadoPor: usuario ? usuario.nomeCompleto : "" };
       setDb((prev) => ({ ...prev, cardapios: [...prev.cardapios, novo] }));
       registrarHistorico(setDb, usuario, `A empresa criou o rascunho do cardápio "${novo.descricao}".`);
     }
@@ -106,21 +104,19 @@ export function CadastroCardapiosEmpresa({ db, setDb, usuario }) {
 
   function enviarParaAnalise() {
     if (!validar()) return;
-    const dadosBase = { modalidadeId, tipoRefeicaoId, turnoId, escolaIds, mesReferencia, dataReferencia, diaSemana, descricao: descricao.toUpperCase(), itens };
+    const dados = montarDados();
     if (editandoId) {
       setDb((prev) => ({
         ...prev,
-        cardapios: prev.cardapios.map((c) =>
-          c.id === editandoId ? { ...c, ...dadosBase, status: "Enviado", enviadoEm: new Date().toISOString() } : c
-        ),
+        cardapios: prev.cardapios.map((c) => (c.id === editandoId ? { ...c, ...dados, status: "Enviado", enviadoEm: new Date().toISOString() } : c)),
       }));
-      registrarHistorico(setDb, usuario, `A empresa enviou o cardápio "${dadosBase.descricao}" para análise da SEME.`);
+      registrarHistorico(setDb, usuario, `A empresa enviou o cardápio "${dados.descricao}" para análise da SEME.`);
     } else {
-      const novo = { id: "c" + Date.now(), ...dadosBase, status: "Enviado", parecer: "", criadoPor: usuario ? usuario.nomeCompleto : "", enviadoEm: new Date().toISOString() };
+      const novo = { id: "c" + Date.now(), ...dados, status: "Enviado", parecer: "", criadoPor: usuario ? usuario.nomeCompleto : "", enviadoEm: new Date().toISOString() };
       setDb((prev) => ({ ...prev, cardapios: [...prev.cardapios, novo] }));
       registrarHistorico(setDb, usuario, `A empresa enviou o cardápio "${novo.descricao}" para análise da SEME.`);
     }
-    notificar(setDb, "nutricionista", `Novo cardápio enviado para análise: ${dadosBase.descricao} (${fmtMes(mesReferencia)}).`);
+    notificar(setDb, "nutricionista", `Novo cardápio enviado para análise: ${dados.descricao} (${fmtMes(mesReferencia)}).`);
     limpar();
   }
 
@@ -131,8 +127,8 @@ export function CadastroCardapiosEmpresa({ db, setDb, usuario }) {
     }
     setEditandoId(c.id);
     setModalidadeId(c.modalidadeId); setTipoRefeicaoId(c.tipoRefeicaoId); setTurnoId(c.turnoId);
-    setEscolaIds(c.escolaIds || []); setMesReferencia(c.mesReferencia); setDataReferencia(c.dataReferencia || "");
-    setDiaSemana(c.diaSemana); setDescricao(c.descricao); setItens(c.itens || []);
+    setMesReferencia(c.mesReferencia); setDataReferencia(c.dataReferencia || "");
+    setDiaSemana(c.diaSemana); setItens(c.itens || []);
   }
 
   function excluir(c) {
@@ -145,12 +141,6 @@ export function CadastroCardapiosEmpresa({ db, setDb, usuario }) {
     registrarHistorico(setDb, usuario, `A empresa excluiu o cardápio "${c.descricao}".`);
   }
 
-  const nomeModalidade = (id) => db.modalidades.find((m) => m.id === id)?.nome || id;
-  const nomeTipoRefeicao = (id) => db.tiposRefeicao.find((r) => r.id === id)?.nome || id;
-  const nomeTurno = (id) => db.turnos.find((t) => t.id === id)?.nome || id;
-  const nomeEscola = (id) => db.escolas.find((e) => e.id === id)?.nome || id;
-
-  const escolasFiltradas = db.escolas.filter((e) => e.nome.toLowerCase().includes(buscaEscola.toLowerCase()));
   const insumosFiltrados = db.insumos.filter((i) => i.nome.toLowerCase().includes(buscaInsumo.toLowerCase()));
 
   const listaFiltrada = db.cardapios.filter((c) => {
@@ -182,33 +172,31 @@ export function CadastroCardapiosEmpresa({ db, setDb, usuario }) {
               {DIAS_SEMANA.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </Field>
-          <Field label="Turno">
+          <Field label="Tipo de Cardápio">
             <select style={inputStyle} value={turnoId} onChange={(e) => setTurnoId(e.target.value)}>
               <option value="" disabled>Selecione</option>
               {db.turnos.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
           </Field>
-          <Field label="Modalidade">
+          <Field label="Modalidade" hint="O nome do cardápio é preenchido automaticamente com a modalidade escolhida.">
             <select style={inputStyle} value={modalidadeId} onChange={(e) => setModalidadeId(e.target.value)}>
               <option value="" disabled>Selecione</option>
               {db.modalidades.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </select>
           </Field>
-          <Field label="Tipo de refeição">
+          <Field label="Tipo de Refeição" hint={(db.tiposRefeicaoCardapio || []).length === 0 ? "Cadastre um na aba \"Tipos de Refeição\" primeiro." : undefined}>
             <select style={inputStyle} value={tipoRefeicaoId} onChange={(e) => setTipoRefeicaoId(e.target.value)}>
               <option value="" disabled>Selecione</option>
-              {db.tiposRefeicao.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+              {(db.tiposRefeicaoCardapio || []).map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
             </select>
-          </Field>
-          <Field label="Descrição">
-            <input style={inputStyle} value={descricao} onChange={(e) => setDescricao(e.target.value.toUpperCase())} placeholder="Ex: CARDÁPIO DE SEGUNDA — FUNDAMENTAL I" />
           </Field>
         </div>
 
-        <Field label="Escolas vinculadas a este cardápio">
-          <input style={{ ...inputStyle, marginBottom: 10 }} value={buscaEscola} onChange={(e) => setBuscaEscola(e.target.value)} placeholder="Pesquisar escola por nome..." />
-          <ItemChecklist insumos={escolasFiltradas} selecionados={escolaIds} onToggle={toggleEscola} />
-        </Field>
+        {modalidadeId && (
+          <div style={{ fontSize: 13, color: COLORS.inkSoft, marginBottom: 14 }}>
+            Nome do cardápio: <strong style={{ color: COLORS.ink }}>{nomeModalidade(modalidadeId).toUpperCase()}</strong>
+          </div>
+        )}
 
         <Field label="Insumos do cardápio">
           <input style={{ ...inputStyle, marginBottom: 10 }} value={buscaInsumo} onChange={(e) => setBuscaInsumo(e.target.value)} placeholder="Pesquisar insumo por nome..." />
@@ -237,10 +225,10 @@ export function CadastroCardapiosEmpresa({ db, setDb, usuario }) {
               <option value="AlteracoesSolicitadas">Alterações solicitadas</option>
             </select>
           </Field>
-          <Field label="Tipo de refeição">
+          <Field label="Tipo de Refeição">
             <select style={inputStyle} value={filtroTipoRefeicao} onChange={(e) => setFiltroTipoRefeicao(e.target.value)}>
               <option value="todos">Todos</option>
-              {db.tiposRefeicao.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+              {(db.tiposRefeicaoCardapio || []).map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
             </select>
           </Field>
           <Field label="Mês">
@@ -258,7 +246,7 @@ export function CadastroCardapiosEmpresa({ db, setDb, usuario }) {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13.5 }}>{c.descricao}</div>
                   <div style={{ fontSize: 12, color: COLORS.inkSoft }}>
-                    {fmtMes(c.mesReferencia)} · toda {c.diaSemana} · {nomeTurno(c.turnoId)} · {nomeModalidade(c.modalidadeId)} · {nomeTipoRefeicao(c.tipoRefeicaoId)}
+                    {fmtMes(c.mesReferencia)} · toda {c.diaSemana} · {nomeTurno(c.turnoId)} · {nomeTipoRefeicao(c.tipoRefeicaoId)}
                   </div>
                   {c.parecer && (c.status === "Reprovado" || c.status === "AlteracoesSolicitadas") && (
                     <div style={{ fontSize: 12.5, color: COLORS.warn, marginTop: 4 }}><strong>Parecer da SEME:</strong> {c.parecer}</div>
@@ -321,11 +309,31 @@ function InsumosEmpresa({ db, setDb, usuario }) {
   );
 }
 
+function CardapiosEmpresa({ db, setDb, usuario }) {
+  const [sub, setSub] = useState("cardapios");
+  return (
+    <div>
+      <Tabs
+        tabs={[
+          { key: "cardapios", label: "Cardápios" },
+          { key: "tiposRefeicao", label: "Tipos de Refeição" },
+        ]}
+        active={sub}
+        onChange={setSub}
+      />
+      {sub === "cardapios" && <CadastroCardapiosEmpresa db={db} setDb={setDb} usuario={usuario} />}
+      {sub === "tiposRefeicao" && (
+        <CadastroSimples db={db} setDb={setDb} usuario={usuario} chave="tiposRefeicaoCardapio" titulo="Tipo de Refeição" campos={[{ key: "nome", label: "Nome do tipo de refeição" }]} />
+      )}
+    </div>
+  );
+}
+
 export function EmpresaContent({ tab, db, setDb, usuario }) {
   return (
     <div>
       {tab === "insumos" && <InsumosEmpresa db={db} setDb={setDb} usuario={usuario} />}
-      {tab === "cardapios" && <CadastroCardapiosEmpresa db={db} setDb={setDb} usuario={usuario} />}
+      {tab === "cardapios" && <CardapiosEmpresa db={db} setDb={setDb} usuario={usuario} />}
       {tab === "lancamentos" && <LancamentosEPagamentos db={db} />}
     </div>
   );

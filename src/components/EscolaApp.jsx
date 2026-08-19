@@ -18,8 +18,8 @@ export function NovoLancamento({ db, setDb, escolaId, usuario, editandoId, onFim
   const fileRef = useRef();
 
   const cardapio = useMemo(
-    () => (modalidadeId && tipoRefeicaoId && turnoId ? buscarCardapioVigente(db.cardapios, { modalidadeId, tipoRefeicaoId, turnoId, escolaId, data }) : null),
-    [db.cardapios, modalidadeId, tipoRefeicaoId, turnoId, escolaId, data]
+    () => (modalidadeId && tipoRefeicaoId && turnoId ? buscarCardapioVigente(db, { modalidadeId, tipoRefeicaoId, turnoId, data }) : null),
+    [db, modalidadeId, tipoRefeicaoId, turnoId, data]
   );
   const previstos = cardapio ? cardapio.itens : [];
   const mesFechado = data ? db.mesesFechados.includes(mesReferenciaDe(data)) : false;

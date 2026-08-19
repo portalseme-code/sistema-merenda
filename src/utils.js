@@ -114,19 +114,28 @@ export function cardapioEstaAprovado(c) {
   // cardápios que já estavam em uso.
   return !c.status || c.status === "Aprovado";
 }
-export function buscarCardapioVigente(cardapios, { modalidadeId, tipoRefeicaoId, turnoId, escolaId, data }) {
+/**
+ * Busca o cardápio aprovado vigente para uma combinação de modalidade,
+ * tipo de cardápio (turno), mês e dia da semana.
+ *
+ * O "Tipo de Refeição" da Empresa (usado para montar o cardápio) é uma
+ * lista independente da "Tipo de Refeição" do Nutricionista/Escola (essa
+ * última tem valor em R$ e é usada só para pagamento) — por isso a
+ * comparação aqui é feita pelo NOME de cada um, não pelo ID.
+ */
+export function buscarCardapioVigente(db, { modalidadeId, tipoRefeicaoId, turnoId, data }) {
   const mes = mesReferenciaDe(data);
   const diaSemana = diaSemanaDe(data);
+  const nomeTipoRefeicaoEscola = (db.tiposRefeicao.find((r) => r.id === tipoRefeicaoId)?.nome || "").trim().toLowerCase();
   return (
-    cardapios.find(
+    db.cardapios.find(
       (c) =>
         cardapioEstaAprovado(c) &&
         c.modalidadeId === modalidadeId &&
-        c.tipoRefeicaoId === tipoRefeicaoId &&
         c.turnoId === turnoId &&
-        (c.escolaIds || []).includes(escolaId) &&
         c.mesReferencia === mes &&
-        c.diaSemana === diaSemana
+        c.diaSemana === diaSemana &&
+        (db.tiposRefeicaoCardapio || []).find((r) => r.id === c.tipoRefeicaoId)?.nome?.trim().toLowerCase() === nomeTipoRefeicaoEscola
     ) || null
   );
 }
